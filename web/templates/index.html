@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>onyx</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link href="/static/css/output.css" rel="stylesheet">
+        <link href="/static/css/twemoji.min.css" rel="stylesheet">
+        <link rel="icon" type="image/x-icon" href="/static/favicon.png">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    </head>
+    <body class="bg-background">
+        <header class="flex flex-row items-between justify-center text-primary p-4">
+            <nav>
+              <h1 class="text-3xl inline-block mr-2">
+                <a href="" class="text-primary hover:text-gray-500">onyx</a>
+              </h1>
+              <a href="/dashboard" class="text-xl text-primary hover:text-gray-500 inline-block">dash</a>
+            </nav>
+        </header>
+
+        <div class="flex flex-col items-center justify-center">
+            <p class="text-6xl pt-12 pb-6 font-bold text-primary">onyx</p>
+            <p class="text-2xl text-center text-primary">
+                best private bot ever (besides lambda maybe)
+            </p>
+        </div>
+
+        <div class="flex flex-col items-center justify-center mt-8">
+            <p class="text-5xl pt-12 pb-6 font-bold text-primary">stats</p>
+            <div class="flex select sm:space-x-8 sm:flex-row max-sm:space-y-8 max-sm:flex-col">
+                <div class="flex flex-col text-secondary items-center w-80 h-32 rounded-xl p-4
+                sm:bg-gradient-to-bl sm:from-blue-900 sm:to-cyan-200
+                max-sm:bg-gradient-to-t max-sm:from-blue-900 max-sm:to-cyan-200">
+                    <p class="text-center font-bold top-4">guilds</p>
+                    <p class="text-4xl font-bold mt-2">{{ guilds }}</p>
+                </div>
+
+                <div class="flex flex-col text-secondary items-center w-80 h-32 rounded-xl p-4
+                sm:bg-gradient-to-br sm:from-blue-900 sm:to-cyan-200
+                max-sm:bg-gradient-to-b max-sm:from-blue-900 max-sm:to-cyan-200">
+                    <p class="text-center font-bold top-4">users</p>
+                    <p class="text-4xl font-bold mt-2">{{ users }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div>
+
+        </div>
+
+        <div class="flex flex-col items-center justify-between">
+            <footer class="absolute bottom-5 text-center text-primary">
+                Made with <i class="twa twa-heart" ></i> by syrice#7165
+            </footer>
+        </div>
+    </body>
+</html>

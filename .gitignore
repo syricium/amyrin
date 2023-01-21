@@ -1,0 +1,6 @@
+
+.env
+bot/.vscode/settings.json
+*.pyc
+bot/logs
+web/node_modules
