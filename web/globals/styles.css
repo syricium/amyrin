@@ -1,3 +1,16 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@media (max-height: 800px) {
+    footer {
+      margin-top: 1.25rem;
+    }
+  }
+
+  @media (min-height: 800px) {
+    footer {
+      position: fixed;
+      bottom: 1.25rem;
+    }
+  }
