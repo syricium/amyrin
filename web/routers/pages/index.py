@@ -18,7 +18,7 @@ async def index(request: Request):
         "index.html",
         {
             "request": request,
-            "users": data.get("users", 0),
-            "guilds": data.get("guilds", 0),
+            "users": data.get("users", "N/A"),
+            "guilds": data.get("guilds", "N/A"),
         },
     )

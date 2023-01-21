@@ -1,5 +1,7 @@
 import asyncio
 import importlib
+import coloredlogs
+import logging
 import os
 
 import uvicorn
@@ -17,13 +19,39 @@ debug = (
 )
 
 def intialize_ipc() -> Client:
+    host = "bot" if not debug else "127.0.0.1"
     return Client(
-        host="bot" if not debug else "127.0.0.1",
+        host=host,
         secret_key=os.getenv("IPC_SECRET_KEY")
     )
+    
+def setup_logger():
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG if debug else logging.INFO)
+
+    dt_fmt = "%Y-%m-%d %H:%M:%S"
+    formatter = logging.Formatter(
+        "[{asctime}] [{levelname:<8}] {name}: {message}", dt_fmt, style="{"
+    )
+
+    filehandler = logging.handlers.RotatingFileHandler(
+        filename="logs/web.log",
+        encoding="utf-8",
+        maxBytes=32 * 1024 * 1024,  # 32 MiB
+        backupCount=5,  # Rotate through 5 files
+    )
+    filehandler.setFormatter(formatter)
+    
+    fmt = "%(name)s[%(process)d] %(levelname)s %(message)s"
+    coloredlogs.install(logger=logger, fmt=fmt, level="DEBUG")
+    logger.addHandler(filehandler)
+    logger.setLevel(logging.DEBUG)
+
+    return logger
 
 app = FastAPI(debug=debug, docs_url=None, redoc_url=None)
 app.ipc = intialize_ipc()
+app.logger = setup_logger()
 app.stats = {}
 
 rootdir = os.getcwd()
@@ -33,16 +61,25 @@ templates = Jinja2Templates(directory=template_dir)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 async def update_statistics():
+    connect_tries = 1
     while True:
-        resp = await app.ipc.request("get_users_and_guilds")
-        app.stats = resp.response
-        await asyncio.sleep(60)
+        try:
+            resp = await app.ipc.request("get_users_and_guilds")
+            data = resp.response
+            app.logger.debug(f"Updated stats: {data}")
+            app.stats = data
+            await asyncio.sleep(60)
+        except ConnectionRefusedError:
+            app.logger.error(f"Connection try #{connect_tries} failed")
+            app.ipc = intialize_ipc()
+            connect_tries += 1
+            await asyncio.sleep(1)
 
 
 @app.on_event("startup")
 async def startup():
     asyncio.create_task(update_statistics())
-    
+
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: Exception):
     status_code, detail = exc.status_code, exc.detail

@@ -6,3 +6,4 @@ bot/.vscode/settings.json
 bot/logs
 web/node_modules
 discord.log
+web/static/css/output.css

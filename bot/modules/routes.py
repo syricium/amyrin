@@ -18,6 +18,8 @@ class Routes(commands.Cog):
 
     @Server.route()
     async def get_users_and_guilds(self, data: ClientPayload) -> Dict:
+        await self.bot.wait_until_ready()
+        
         users = len(self.bot.users)
         guilds = len(self.bot.guilds)
         return {
