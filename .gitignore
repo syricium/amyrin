@@ -7,3 +7,4 @@ bot/logs
 web/node_modules
 discord.log
 web/static/css/output.css
+web/logs/web.log
