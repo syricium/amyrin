@@ -1,0 +1,22 @@
+version: "3.9"
+name: onyx
+services:
+  bot:
+    build: ./bot
+    environment:
+      DEBUG: "false"
+    networks:
+      - onyx
+  web:
+    build: ./web
+    environment:
+      DEBUG: "false"
+    ports:
+      - "5400:5000"
+    depends_on:
+      - bot
+    networks:
+      - onyx
+
+networks:
+  onyx:
