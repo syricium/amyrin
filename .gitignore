@@ -1,6 +1,8 @@
 
 .env
 bot/.vscode/settings.json
+.vscode/settings.json
 *.pyc
 bot/logs
 web/node_modules
+discord.log

@@ -46,11 +46,7 @@ class onyx(commands.Bot):
         self.expr_states = {} # expr.py states, in use in modules.util.views.calculator
 
         self.gp: GoogleParser = None  # GoogleParser instance, later defined in modules.util.parsing.google.GoogleParser.intialize
-        self.ipc = ipc.Server(
-            self,
-            host="0.0.0.0",
-            secret_key=os.getenv("IPC_SECRET_KEY")
-        )
+        self.ipc = ipc.Server(self, secret_key=os.getenv("IPC_SECRET_KEY"))
 
         self.google_regex = re.compile(r"^hey onyx ?(?P<query>.+)$", re.IGNORECASE)
 
@@ -77,15 +73,7 @@ class onyx(commands.Bot):
         self.session = aiohttp.ClientSession()
 
         self.playwright = await async_playwright().start()
-        
-        try:
-            self.browser = await self.playwright.chromium.launch()
-        except Exception as exc:
-            exc = "".join(
-                traceback.format_exception(type(exc), exc, exc.__traceback__)
-            )
-            
-            self.logger.error(f"Error occured starting browser:\n{exc}")
+        self.browser = await self.playwright.chromium.launch()
 
         rootdir = os.getcwd()
         direc = os.path.join(rootdir, "modules")
@@ -223,7 +211,6 @@ class onyx(commands.Bot):
         self.setup_loggers()
 
         token = os.getenv("DISCORD_TOKEN")
-        
         return self.run(token, log_handler=None)
 
 
