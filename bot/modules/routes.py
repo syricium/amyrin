@@ -20,7 +20,11 @@ class Routes(commands.Cog):
     async def get_users_and_guilds(self, data: ClientPayload) -> Dict:
         await self.bot.wait_until_ready()
         
-        users = len(self.bot.users)
+        users = 0
+        
+        for guild in self.bot.guilds:
+            users += sum(not x.bot for x in guild.members)
+        
         guilds = len(self.bot.guilds)
         return {
             "users": users,
