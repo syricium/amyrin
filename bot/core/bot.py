@@ -14,13 +14,21 @@ import mystbin
 from discord.ext import commands, ipc
 from discord.ext.commands import Context, Greedy
 from dotenv import load_dotenv
+from playwright.async_api._generated import Browser
 from playwright.async_api import async_playwright
 
 from core.context import Context
-from modules.util.parsing.google import GoogleParser
+from modules.util.views.paginator import EmbedPaginator
 
 load_dotenv()
 
+debug = (
+    True
+    if not os.getenv("DEBUG")
+    else False
+    if os.getenv("DEBUG") == "false"
+    else True
+)
 
 class onyx(commands.Bot):
     def __init__(self, *args, **kwargs) -> commands.Bot:
@@ -28,34 +36,30 @@ class onyx(commands.Bot):
         self.uptime = datetime.utcnow()
         self.myst = mystbin.Client(token=os.getenv("MYSTBIN_API"))
 
-        self.debug = (
-            True
-            if not os.getenv("DEBUG")
-            else False
-            if os.getenv("DEBUG") == "false"
-            else True
-        )
+        self.debug = debug
 
         self.owner_id = 424548154403323934
         self.owner_ids = (424548154403323934,)
         self.session = (
-            None  # aiohttp.ClientSession instance, later defined in setup_hook
+            None  # aiohttp.ClientSession instance, later defined in self.setup_hook
         )
         self.logger = None  # logging.Logger instance, later defined in self.startup
-        self.browser = None  # playwright.chromium instance, later defined in setup_hook
         self.expr_states = {} # expr.py states, in use in modules.util.views.calculator
 
-        self.gp: GoogleParser = None  # GoogleParser instance, later defined in modules.util.parsing.google.GoogleParser.intialize
+        self.playwright = None # playwright instance, later defined in self.setup_hook
+        self.browser: Browser = None # playwright chromium instance, later defined in self.setup_hook
+
         self.ipc = ipc.Server(
             self,
             host="0.0.0.0",
             secret_key=os.getenv("IPC_SECRET_KEY")
         )
 
-        self.google_regex = re.compile(r"^hey onyx ?(?P<query>.+)$", re.IGNORECASE)
+        name = "onyc" if self.debug else "onyx"
+        self.google_regex = re.compile(rf"^hey {name} ?(?P<query>.+)$", re.IGNORECASE)
 
         self.color = (
-            0xAFFFB6  # color used for embeds and whereever else it would be appropiate
+            0x2F3136  # color used for embeds and whereever else it would be appropiate
         )
 
     @property
@@ -75,17 +79,10 @@ class onyx(commands.Bot):
         discord.utils.setup_logging()
 
         self.session = aiohttp.ClientSession()
-
-        self.playwright = await async_playwright().start()
         
-        try:
-            self.browser = await self.playwright.chromium.launch()
-        except Exception as exc:
-            exc = "".join(
-                traceback.format_exception(type(exc), exc, exc.__traceback__)
-            )
-            
-            self.logger.error(f"Error occured starting browser:\n{exc}")
+        self.playwright = await async_playwright().start()
+        self.browser = await self.playwright.chromium.launch(headless=not self.debug)
+        self.bcontext = await self.browser.new_context()
 
         rootdir = os.getcwd()
         direc = os.path.join(rootdir, "modules")
@@ -123,20 +120,70 @@ class onyx(commands.Bot):
     async def on_message(self, message: discord.Message) -> None:
         if message.author.bot:
             return
+        
+        if self.debug and not await self.is_owner(message.author):
+            return
 
         if await self.is_owner(message.author) and (
             match := self.google_regex.match(message.content)
         ):
-            from modules.util.parsing.google import SnippetRCResponse
+            from modules.util.scraping.google import GoogleScraper
             
             query = match.group("query")
-            resp = await self.gp.search(query)
-            print(type(resp))
-            if isinstance(resp, SnippetRCResponse):
-                return await message.reply(resp.text)
-            return await message.reply(
-                f"Response is not a valid text response, but `{resp.__class__.__name__}`"
+            scraper = GoogleScraper(self.browser)
+            
+            number = 1
+            match = re.search(
+                r"\(num=(?P<number>[0-9]+)\)",
+                query,
+                re.IGNORECASE
             )
+            if match:
+                number = int(match.group("number"))
+                
+                start = match.start()
+                end = match.end()
+                
+                string = query[start:end]
+                
+                query = query.replace(string, "").strip()
+            
+            resp = await scraper.search(query)
+            
+            if not resp.websites:
+                return await message.reply("No results")
+            
+            if number > len(resp.websites):
+                number = len(resp.websites)
+                
+            if number <= 0:
+                number = 1
+            
+            embeds = []
+            for website in resp.websites:
+                title = website.title
+                description = website.description
+                url = website.href
+                index = resp.websites.index(website)
+                
+                embed = discord.Embed(
+                    title=str(title),
+                    description=str(description),
+                    url=url or "https://example.com",
+                    color=self.color
+                )
+                
+                embed.set_footer(
+                    text=f"Index: {index+1}/{len(resp.websites)}"
+                )
+                
+                embeds.append(embed)
+                
+            paginator = EmbedPaginator(
+                embeds, index=number
+            )
+            paginator.index = number -1
+            await paginator.start(message, timeout=30)
 
         await self.process_commands(message)
 
@@ -222,7 +269,8 @@ class onyx(commands.Bot):
     def startup(self) -> None:
         self.setup_loggers()
 
-        token = os.getenv("DISCORD_TOKEN")
+        token_key = ("DEV_" if self.debug else "") + "DISCORD_TOKEN"
+        token = os.getenv(token_key)
         
         return self.run(token, log_handler=None)
 
@@ -230,7 +278,7 @@ class onyx(commands.Bot):
 intents = discord.Intents.all()
 
 bot = onyx(
-    command_prefix=commands.when_mentioned,
+    command_prefix=commands.when_mentioned if not debug else "onyc",
     allowed_mentions=discord.AllowedMentions.none(),
     intents=intents,
     strip_after_prefix=True,

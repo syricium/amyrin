@@ -1,9 +1,7 @@
 import discord
-import asyncio
-import copy
-import time
 import expr
 
+from .base import View
 from discord.ext import commands
 
 async def start_calculator(ctx: commands.Context):
@@ -11,20 +9,6 @@ async def start_calculator(ctx: commands.Context):
     embed = view.build_embed()
     msg = await ctx.send(embed=embed, view=view)
     view.message = msg
-
-class View(discord.ui.View):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    async def disable_all(self, interaction: discord.Interaction):
-        children = copy.copy(self.children)
-        for child in self.children:
-            child.disabled = True
-        if interaction.response.is_done():
-            await interaction.edit_original_response(view=self)
-        else:
-            await interaction.response.edit_message(view=self)
-        return children
 
 class CalculatorButton(discord.ui.Button):
     def __init__(self, calculator, action: str, *args, **kwargs):

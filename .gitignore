@@ -7,3 +7,4 @@ web/node_modules
 discord.log
 web/static/css/output.css
 web/logs
+bot/.vscode/launch.json
