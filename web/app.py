@@ -111,4 +111,4 @@ for root, _, files in os.walk(direc):
             app.include_router(getattr(imp, "router"))
 
 if __name__ == "__main__":
-    uvicorn.run("app:app", host="0.0.0.0", port=5000, reload=debug)
+    uvicorn.run("app:app", host="0.0.0.0", port=5400, reload=debug)
