@@ -155,11 +155,16 @@ class MusixMatchScraper:
         
         lyric_containers = lyrics_container.find("span") \
             .children
-        lyrics = "\n".join(i.text for i in lyric_containers)
+        lyrics = "\n".join(i.text for i in lyric_containers) \
+            .strip()
+        
+        if lyrics == "":
+            lyrics = "Failed to load lyrics."
+            
             
         info_container = soup.find("div", class_="mxm-track-title")
         
-        title = list(info_container.find("h1", class_="mxm-track-title__track"))[-1]
+        title = list(info_container.find("h1", class_="mxm-track-title__track"))[1:]
         
         artist_container = info_container.find("h2").find("a")
         artist_url = self._build_url(artist_container["href"])
