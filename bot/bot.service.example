@@ -1,0 +1,13 @@
+[Unit]
+Description=onyx bot
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/onyx/bot
+ExecStart=python3.11 start.py
+User=onyx
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

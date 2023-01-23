@@ -1,0 +1,13 @@
+[Unit]
+Description=onyx web
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/onyx/web
+ExecStart=python3.11 start.py
+User=onyx
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

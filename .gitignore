@@ -8,3 +8,4 @@ discord.log
 web/static/css/output.css
 web/logs
 bot/.vscode/launch.json
+*.service

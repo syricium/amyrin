@@ -19,9 +19,8 @@ debug = (
 )
 
 def intialize_ipc() -> Client:
-    host = "bot" if not debug else "127.0.0.1"
     return Client(
-        host=host,
+        host="127.0.0.1",
         secret_key=os.getenv("IPC_SECRET_KEY")
     )
     
