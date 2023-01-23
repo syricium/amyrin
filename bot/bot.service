@@ -6,7 +6,6 @@ After=network-online.target
 Type=simple
 WorkingDirectory=/home/onyx/onyx/bot
 ExecStart=sh start.sh
-User=onyx
 Restart=always
 
 [Install]
