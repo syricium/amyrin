@@ -11,8 +11,8 @@ sudo add-apt-repository ppa:deadsnakes/ppa
 sudo apt install -y python3.11
 
 python3.11 -m pip install -r requirements.txt
-sudo playwright install chromium
-sudo playwright install-deps
+python3.11 -m playwright install chromium
+python3.11 -m playwright install-deps
 
 sudo mv bot.service /etc/systemd/user/bot.service
 
