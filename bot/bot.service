@@ -1,10 +1,10 @@
 [Unit]
-Description=onyx web
+Description=onyx bot
 After=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=/home/onyx/web
+WorkingDirectory=/home/onyx/onyx/bot
 ExecStart=chmod +x start.sh && ./start.sh
 User=onyx
 Restart=always
