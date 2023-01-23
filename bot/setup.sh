@@ -1,6 +1,6 @@
 SERVICE_FILE=./bot.service
 if [ ! -f "$SERVICE_FILE" ]; then
-    echo "bot.service file has not yet been configured, please execute \"mv bot.service.example bot.service\" and then" \
+    echo "bot.service file does not exist, please create it with \"touch bot.service\" and then" \
     "configure it with an editor like nano or vim"
     exit 0
 fi
