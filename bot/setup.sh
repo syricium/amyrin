@@ -1,5 +1,5 @@
 SERVICE_FILE=./bot.service
-BASHRC_FILE=~/.bashrc
+BASHRC_FILE=/home/$USER/.bashrc
 BASHRC_LINE="export XDG_RUNTIME_DIR=/run/user/$(id -u)"
 
 if [ ! -f "$SERVICE_FILE" ]; then
