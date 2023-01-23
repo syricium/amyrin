@@ -1,6 +1,6 @@
 SERVICE_FILE=./web.service
 if [ ! -f "$SERVICE_FILE" ]; then
-    echo "web.service file has not yet been configured, please execute \"mv web.service.example web.service\" and then " \
+    echo "web.service file has not yet been configured, please execute \"mv web.service.example web.service\" and then" \
     "configure it with an editor like nano or vim"
     exit 0
 fi
