@@ -54,15 +54,10 @@ class SongView(View):
         return True
     
     async def on_timeout(self) -> None:
-        embed = None
-        if self._message.embeds:
-            embed = self._message.embeds[0]
-            embed.description = "Lyrics have been cleared due to the selection menu timing out"
-        
         for child in self.children:
             child.disabled = True
         
-        await self._message.edit(embed=embed, view=self)
+        await self._message.edit(view=self)
         
     def _build_embed(
         self,
@@ -80,13 +75,14 @@ class SongView(View):
         
     async def _callback(self, interaction: discord.Interaction, option: SearchResult):
         await interaction.response.defer()
-        try:
-            song = await self._scraper.get_song(option.url)
-        except VerificationError as exc:
-            await interaction.edit_original_response(embed=None, view=None, content=str(exc))
-        else:
-            embed = self._build_embed(song)
-            await interaction.edit_original_response(embed=embed, content=None)
+        async with self.context.typing():
+            try:
+                song = await self._scraper.get_song(option.url)
+            except VerificationError as exc:
+                await interaction.edit_original_response(embed=None, view=None, content=str(exc))
+            else:
+                embed = self._build_embed(song)
+                await interaction.edit_original_response(embed=embed, content=None)
             
         self._message = await interaction.original_response()
         
@@ -107,7 +103,7 @@ class SongView(View):
             self.add_item(selection)
             
             self._message = await ctx.send(
-                content="Please select the song you mean, or be more specific if it isn't in there",
+                content="Please select the song you mean, or try to be more specific if it isn't in there",
                 view=self
             )
         
