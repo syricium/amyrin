@@ -14,7 +14,7 @@ python3.11 -m pip install -r requirements.txt
 sudo playwright install chromium
 sudo playwright install-deps
 
-mv bot.service /etc/systemd/user/bot.service
+sudo mv bot.service /etc/systemd/user/bot.service
 
-echo "Script is done running, if you have run the bot's setup.sh script already, please remove " \
+echo "Script is done running, if you have run the web's setup.sh script already, please remove " \
 "sudo privileges from the user running the bot, and if you don't have one, please create one"
