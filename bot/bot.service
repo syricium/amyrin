@@ -5,7 +5,7 @@ After=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=/home/onyx/onyx/bot
-ExecStart=chmod +x start.sh && ./start.sh
+ExecStart=sh start.sh
 User=onyx
 Restart=always
 
