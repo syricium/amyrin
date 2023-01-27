@@ -1,3 +1,4 @@
+import importlib
 import logging
 import logging.handlers
 import os
@@ -6,29 +7,25 @@ import traceback
 from datetime import datetime
 from textwrap import indent
 from typing import Literal, Optional
-import importlib
 
 import aiohttp
 import discord
 import mystbin
+from core.context import Context
 from discord.ext import commands, ipc
 from discord.ext.commands import Context, Greedy
 from dotenv import load_dotenv
-from playwright.async_api._generated import Browser
-from playwright.async_api import async_playwright
-
-from core.context import Context
+from modules.util.documentation.parser import DocParser
 from modules.util.views.paginator import EmbedPaginator
+from playwright.async_api import async_playwright
+from playwright.async_api._generated import Browser
 
 load_dotenv()
 
 debug = (
-    True
-    if not os.getenv("DEBUG")
-    else False
-    if os.getenv("DEBUG") == "false"
-    else True
+    True if not os.getenv("DEBUG") else False if os.getenv("DEBUG") == "false" else True
 )
+
 
 class onyx(commands.Bot):
     def __init__(self, *args, **kwargs) -> commands.Bot:
@@ -44,15 +41,16 @@ class onyx(commands.Bot):
             None  # aiohttp.ClientSession instance, later defined in self.setup_hook
         )
         self.logger = None  # logging.Logger instance, later defined in self.startup
-        self.expr_states = {} # expr.py states, in use in modules.util.views.calculator
+        self.expr_states = {}  # expr.py states, in use in modules.util.views.calculator
 
-        self.playwright = None # playwright instance, later defined in self.setup_hook
-        self.browser: Browser = None # playwright chromium instance, later defined in self.setup_hook
+        self.playwright = None  # playwright instance, later defined in self.setup_hook
+        self.browser: Browser = (
+            None  # playwright chromium instance, later defined in self.setup_hook
+        )
+        self.docparser: DocParser = None  # DocParser instance, later defined in modules.util.documentation.parser
 
         self.ipc = ipc.Server(
-            self,
-            host="0.0.0.0",
-            secret_key=os.getenv("IPC_SECRET_KEY")
+            self, host="0.0.0.0", secret_key=os.getenv("IPC_SECRET_KEY")
         )
 
         name = "onyc" if self.debug else "onyx"
@@ -79,7 +77,7 @@ class onyx(commands.Bot):
         discord.utils.setup_logging()
 
         self.session = aiohttp.ClientSession()
-        
+
         self.playwright = await async_playwright().start()
         self.browser = await self.playwright.chromium.launch(headless=not self.debug)
         self.bcontext = await self.browser.new_context()
@@ -89,11 +87,13 @@ class onyx(commands.Bot):
         for root, _, files in os.walk(direc):
             prefix = root[len(rootdir) + 1 :].replace("\\", "/").replace("/", ".")
 
-            parent = prefix.split(".")[-1] # get the parent of the file
-            if parent == "__pycache__": # ignore pycache folders
+            parent = prefix.split(".")[-1]  # get the parent of the file
+            if parent == "__pycache__":  # ignore pycache folders
                 continue
 
-            for file in files: # iterate through all files in a subdirectory
+            for file in files:  # iterate through all files in a subdirectory
+                if not file.endswith(".py"):
+                    continue
                 fn = file[:-3]
                 name = f"{prefix}.{fn}"
                 try:
@@ -102,7 +102,7 @@ class onyx(commands.Bot):
                     exc = "".join(
                         traceback.format_exception(type(exc), exc, exc.__traceback__)
                     )
-                    
+
                     self.logger.error(f"Error occured loading module {name}:\n{exc}")
                 else:
                     if hasattr(imp, "setup"):
@@ -110,17 +110,21 @@ class onyx(commands.Bot):
                             await self.load_extension(name)
                         except Exception as exc:
                             exc = "".join(
-                                traceback.format_exception(type(exc), exc, exc.__traceback__)
+                                traceback.format_exception(
+                                    type(exc), exc, exc.__traceback__
+                                )
                             )
 
-                            self.logger.error(f"Error occured loading module {name}:\n{exc}")
+                            self.logger.error(
+                                f"Error occured loading module {name}:\n{exc}"
+                            )
                         else:
                             self.logger.info(f"Succesfully loaded module {name}")
 
     async def on_message(self, message: discord.Message) -> None:
         if message.author.bot:
             return
-        
+
         if self.debug and not await self.is_owner(message.author):
             return
 
@@ -128,61 +132,53 @@ class onyx(commands.Bot):
             match := self.google_regex.match(message.content)
         ):
             from modules.util.scraping.google import GoogleScraper
-            
+
             query = match.group("query")
             scraper = GoogleScraper(self.browser)
-            
+
             number = 1
-            match = re.search(
-                r"\(num=(?P<number>[0-9]+)\)",
-                query,
-                re.IGNORECASE
-            )
+            match = re.search(r"\(num=(?P<number>[0-9]+)\)", query, re.IGNORECASE)
             if match:
                 number = int(match.group("number"))
-                
+
                 start = match.start()
                 end = match.end()
-                
+
                 string = query[start:end]
-                
+
                 query = query.replace(string, "").strip()
-            
+
             resp = await scraper.search(query)
-            
+
             if not resp.websites:
                 return await message.reply("No results")
-            
+
             if number > len(resp.websites):
                 number = len(resp.websites)
-                
+
             if number <= 0:
                 number = 1
-            
+
             embeds = []
             for website in resp.websites:
                 title = website.title
                 description = website.description
                 url = website.href
                 index = resp.websites.index(website)
-                
+
                 embed = discord.Embed(
                     title=str(title),
                     description=str(description),
                     url=url or "https://example.com",
-                    color=self.color
+                    color=self.color,
                 )
-                
-                embed.set_footer(
-                    text=f"Index: {index+1}/{len(resp.websites)}"
-                )
-                
+
+                embed.set_footer(text=f"Index: {index+1}/{len(resp.websites)}")
+
                 embeds.append(embed)
-                
-            paginator = EmbedPaginator(
-                embeds, index=number
-            )
-            paginator.index = number -1
+
+            paginator = EmbedPaginator(embeds, index=number)
+            paginator.index = number - 1
             await paginator.start(message, timeout=30)
 
         await self.process_commands(message)
@@ -269,9 +265,9 @@ class onyx(commands.Bot):
     def startup(self) -> None:
         self.setup_loggers()
 
-        token_key = ("DEV_" if self.debug else "") + "DISCORD_TOKEN"
+        token_key = "DISCORD_TOKEN"
         token = os.getenv(token_key)
-        
+
         return self.run(token, log_handler=None)
 
 
@@ -282,7 +278,7 @@ bot = onyx(
     allowed_mentions=discord.AllowedMentions.none(),
     intents=intents,
     strip_after_prefix=True,
-    case_insensitive=True
+    case_insensitive=True,
 )
 
 # stole from https://gist.github.com/AbstractUmbra/a9c188797ae194e592efe05fa129c57f

@@ -1,8 +1,9 @@
 from typing import Iterable, List
 
 import discord
-from .base import View
 from discord.ext import commands
+
+from .base import View
 
 
 async def paginate(
@@ -12,9 +13,10 @@ async def paginate(
     emojis: dict = None,
     index: int = None,
     page_count: int = None,
+    *args, **kwargs
 ):
     return await EmbedPaginator(embeds, emojis, index, page_count).start(
-        ctx, timeout=timeout
+        ctx, timeout=timeout, *args, **kwargs
     )
 
 
@@ -44,7 +46,7 @@ class EmbedPaginator:
         embeds: List,
         emojis: dict = None,
         index: int = None,
-        page_count: int = None
+        page_count: int = None,
     ):
         self.embeds = embeds
         self.emojis = emojis or {
@@ -121,7 +123,7 @@ class EmbedPaginator:
                     )
                     return False
                 return True
-            
+
             async def on_timeout(self) -> None:
                 await self.disable_all(_self.message)
 
@@ -228,14 +230,22 @@ class EmbedPaginator:
         await self.update(self.pages - 1, interaction)
 
     async def start(
-        self, ctx: commands.Context | discord.Interaction, timeout: int = 10
+        self, ctx: commands.Context | discord.Interaction, timeout: int = 10, *args, **kwargs
     ):
         self.context = ctx
         view = self.new_view(timeout=timeout)
+        
+        if kwarg_view := kwargs.pop("view"):
+            for child in kwarg_view.children:
+                view.add_item(child)
+        
+        kwargs = dict(embed=self.page, view=view, *args, **kwargs)
+        
         if isinstance(ctx, commands.Context):
-            self.message = await ctx.send(embed=self.page, view=view)
+            self.message = await ctx.send(**kwargs)
         elif isinstance(ctx, discord.Message):
-            self.message = await ctx.channel.send(embed=self.page, view=view)
+            self.message = await ctx.channel.send(**kwargs)
         elif isinstance(discord.Interaction):
-            self.message = await ctx.response.send_message(embed=self.page, view=view)
-        return self
+            self.message = await ctx.response.send_message(**kwargs)
+        
+        return self.message

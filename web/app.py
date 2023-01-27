@@ -1,29 +1,28 @@
 import asyncio
 import importlib
-import coloredlogs
 import logging
 import os
 
+import coloredlogs
 import uvicorn
 from discord.ext.ipc import Client
+from dotenv import load_dotenv
 from fastapi import FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from dotenv import load_dotenv
 load_dotenv()
 
 debug = (
     True if not os.getenv("DEBUG") else False if os.getenv("DEBUG") == "false" else True
 )
 
+
 def intialize_ipc() -> Client:
-    return Client(
-        host="127.0.0.1",
-        secret_key=os.getenv("IPC_SECRET_KEY")
-    )
-    
+    return Client(host="127.0.0.1", secret_key=os.getenv("IPC_SECRET_KEY"))
+
+
 def setup_logger():
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG if debug else logging.INFO)
@@ -40,13 +39,14 @@ def setup_logger():
         backupCount=5,  # Rotate through 5 files
     )
     filehandler.setFormatter(formatter)
-    
+
     fmt = "%(name)s[%(process)d] %(levelname)s %(message)s"
     coloredlogs.install(logger=logger, fmt=fmt, level="DEBUG")
     logger.addHandler(filehandler)
     logger.setLevel(logging.DEBUG)
 
     return logger
+
 
 app = FastAPI(debug=debug, docs_url=None, redoc_url=None)
 app.ipc = intialize_ipc()
@@ -58,6 +58,7 @@ template_dir = os.path.join(rootdir, "templates")
 templates = Jinja2Templates(directory=template_dir)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
 
 async def update_statistics():
     connect_tries = 1
@@ -78,6 +79,7 @@ async def update_statistics():
 @app.on_event("startup")
 async def startup():
     asyncio.create_task(update_statistics())
+
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: Exception):

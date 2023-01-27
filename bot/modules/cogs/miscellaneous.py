@@ -5,9 +5,10 @@ from datetime import datetime
 import discord
 import humanize
 import psutil
+from core.bot import onyx
 from discord.ext import commands
 
-from core.bot import onyx
+from . import *
 
 
 class Miscellaneous(commands.Cog):
@@ -15,7 +16,10 @@ class Miscellaneous(commands.Cog):
         super().__init__()
         self.bot: onyx = bot
 
-    @commands.hybrid_command(name="ping", description="Get the ping of the bot")
+    @command(
+        description="Get the ping of the bot",
+        examples=["{prefix}ping"]
+    )
     async def ping(self, ctx: commands.Context | discord.Interaction):
         websocket = round(self.bot.latency * 1000, 2)
 
@@ -24,10 +28,13 @@ class Miscellaneous(commands.Cog):
             name=f"Websocket",
             value=f"```diff\n{websocket}ms```",
         )
-        
+
         await ctx.send(embed=em)
 
-    @commands.hybrid_command(name="about", description="Get info about oynx's file stats and host stats")
+    @command(
+        description="Get info about oynx's file stats and host stats",
+        examples=["{prefix}about"]
+    )
     @commands.cooldown(1, 20)
     async def about(self, ctx: commands.Context | discord.Interaction):
         path = pathlib.Path(os.getcwd())
@@ -125,7 +132,7 @@ Disk Used: {psutil.disk_usage(str(path)).percent}%
 ```
 """,
         )
-        
+
         await ctx.send(embed=em)
 
 

@@ -4,12 +4,11 @@ import discord
 import humanize
 import jishaku
 import psutil
+from core.bot import onyx
 from discord.ext import commands
 from jishaku.cog import OPTIONAL_FEATURES, STANDARD_FEATURES
 from jishaku.features.baseclass import Feature
 from jishaku.modules import package_version
-
-from core.bot import onyx
 
 jishaku.Flags.NO_DM_TRACEBACK = True
 jishaku.Flags.NO_UNDERSCORE = True

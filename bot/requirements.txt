@@ -11,3 +11,7 @@ expr.py==0.3.0
 playwright==1.29.1
 jishaku==2.5.1
 beautifulsoup4==4.11.1
+python-Levenshtein==0.20.9
+fuzzywuzzy==0.18.0
+humanfriendly==10.0
+sphobjinv==2.3.1

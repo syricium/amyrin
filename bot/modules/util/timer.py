@@ -1,23 +1,16 @@
 import time
 
-
 class Timer:
     def __init__(self):
         self._start = None
         self._end = None
 
-    def start(self):
-        self._start = time.perf_counter()
-
-    def stop(self):
-        self._end = time.perf_counter()
-
     def __enter__(self):
-        self.start()
+        self._start = time.perf_counter()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.stop()
+        self._end = time.perf_counter()
 
     def __int__(self):
         return round(self.time)
@@ -32,7 +25,7 @@ class Timer:
         return f"<Timer time={self.time}>"
 
     @property
-    def time(self):
+    def time(self) -> int:
         if self._end is None:
-            raise ValueError("Timer has not been ended.")
+            raise ValueError("Timer has not yet ended.")
         return self._end - self._start
