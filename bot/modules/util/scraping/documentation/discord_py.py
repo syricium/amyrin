@@ -1,7 +1,11 @@
+import ast
+import asyncio
+import inspect
+import os
 import discord
 import re
 from dataclasses import dataclass
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, TypedDict, Callable
 from urllib.parse import urlparse, urljoin, ParseResult
 
 from bs4 import BeautifulSoup, Tag, SoupStrainer
@@ -18,6 +22,34 @@ class Response:
         return any(
             getattr(self, str(attr)) for attr in dir(self) if not attr.startswith("_")
         )
+        
+@dataclass(frozen=True)
+class RTFSItem:
+    name: str
+    url: str
+    
+class RTFSResults:
+    def __init__(
+        self,
+        results: set[str, str, bool]
+    ) -> None:
+        self.results: List[RTFSItem] = results
+    
+    def __list__(self):
+        return self.results
+    
+    def to_embed(self, color: Optional[int] = None):
+        description = "\n".join(
+            f"[`{result.name}`]({result.url})"
+            for result in self.results
+        )
+        
+        embed = discord.Embed(
+            description=description,
+            color=color
+        )
+        
+        return embed
 
 @dataclass(frozen=True)
 class Documentation:
@@ -86,13 +118,165 @@ class SearchResults:
 class DocScraper:
     def __init__(
         self,
-        browser: Browser = None
+        browser: Optional[Browser] = None
     ):
         self._browser = browser
 
         self._base_url = "https://discordpy.readthedocs.io/en/stable/"
         self._inv_url = urljoin(self._base_url, "objects.inv")
         self._inv: Inventory = None
+        
+        self._rtfs_commit: Optional[str] = None
+        self._rtfs_cache: Optional[
+            Dict[
+                str,
+                List[
+                    TypedDict(
+                        "rtfs", {
+                            "name": str,
+                            "file": str,
+                            "position": set[int, int], # start and end position
+                        }
+                    )
+                ]
+            ]
+        ] = {}
+        
+        self._rtfs_repos = {
+            # name          github url                              directory name
+            "discord.py": ("https://github.com/Rapptz/discord.py", "discord")
+        }
+        
+    async def _shell(self, command: str) -> str:
+        proc = await asyncio.wait_for(
+            asyncio.create_subprocess_shell(
+                command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            ),
+            timeout=60,
+        )
+
+        stdout, stderr = await proc.communicate()
+
+        return stdout.decode(), stderr.decode()
+    
+    def _rtfs_index_file(
+        self, repo: str, filepath: os.PathLike
+    ) -> None:
+        def append_item(name: str, file: os.PathLike, position: set[int, int]):
+            repos_path = os.path.join(os.getcwd(), "rtfs_repos")
+            repo_path = os.path.join(repos_path, repo)
+            filepath = file[len(repo_path):]
+            path = filepath.split("/")[:-1]
+            
+            if "" in path:
+                path.remove("")
+                
+            name = ".".join(path) + "." + name
+            
+            name = (name
+                    .replace("discord.ext.", "")
+                    .replace("discord.", ""))
+            
+            data = {"name": name, "file": filepath, "position": position}
+            if not self._rtfs_cache.get(repo):
+                self._rtfs_cache[repo] = []
+            self._rtfs_cache[repo].append(data)
+        
+        with open(filepath) as f:
+            code = f.read()
+        
+        tree = ast.parse(code)
+        
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef):
+                if node.name.startswith("_"):
+                    continue
+                
+                class_position = (node.lineno, node.end_lineno)
+                append_item(node.name, filepath, class_position)
+                
+                for child in node.body:
+                    if (
+                        not isinstance(child, ast.AsyncFunctionDef) and
+                        not isinstance(child, ast.FunctionDef) or
+                        child.name.startswith("_")
+                    ):
+                        continue
+                    
+                    child_position = (child.lineno, child.end_lineno)
+                    
+                    name = f"{node.name}.{child.name}"
+                    append_item(name, filepath, child_position)
+    
+    @executor()
+    def _rtfs_index_directory(self, repo: str, path: os.PathLike):
+        for root, _, files in os.walk(path):
+            for file in files:
+                filepath = os.path.join(root, file)
+                without_root = filepath[len(path):]
+                first_directory = without_root.split("/")[0]
+                
+                if first_directory == "types":
+                    continue
+                
+                if not file.endswith(".py"):
+                    continue
+                
+                if file.startswith("_"):
+                    continue
+                
+                self._rtfs_index_file(repo, filepath)
+        
+    async def _build_rtfs_cache(self):
+        rtfs_repos = os.path.join(os.getcwd(), "rtfs_repos")
+        for repo, (url, dir_name) in self._rtfs_repos.items():
+            rtfs_repo = os.path.join(rtfs_repos, repo)
+            path = os.path.join(rtfs_repo, dir_name)
+            
+            if not os.path.isdir(path) and os.listdir(path) != []:
+                continue
+            
+            await self._shell(f"git clone {url} {repo}")
+            
+            await self._rtfs_index_directory(repo, path)
+            
+    async def rtfs_search(self, repo: str, query: str, limit: Optional[int] = None, updater: Callable = None) -> List[RTFSItem]:
+        async def update(message: str):
+            if updater is None:
+                return
+            
+            if inspect.iscoroutinefunction(updater):
+                return await updater(message)
+            return updater(message)
+        
+        if self._rtfs_cache == {}:
+            await update("Building cache")
+            await self._build_rtfs_cache()
+            
+        await update("Formatting results")
+            
+        results = []
+        
+        repo_url, repo_path = self._rtfs_repos[repo]
+        full_repo_url = repo_url + f"/tree/master"
+        
+        data = self._rtfs_cache[repo]
+        
+        for item in data:
+            name = item.get("name")
+            file = item.get("file")
+            start, end = item.get("position")
+            
+            file_url = urlparse(full_repo_url + file)._replace(fragment=f"L{start}-L{end}")
+            
+            item = RTFSItem(name, file_url.geturl())
+            results.append(item)
+            
+        matches = sorted(results, key=lambda x: fuzz.partial_ratio(query, x.name), reverse=True)[:limit]
+            
+        return RTFSResults(matches)
     
     async def _get_html(
         self, url: str, timeout: int = 0, wait_until: Optional[str] = None

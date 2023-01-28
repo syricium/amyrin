@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "bot"
+		},
+		{
+			"path": "web"
+		}
+	],
+	"settings": {}
+}

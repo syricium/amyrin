@@ -12,7 +12,7 @@ class CommandErrorHandler(commands.Cog):
         self.bot = bot
 
     @commands.Cog.listener()
-    async def on_command_error(self, ctx, error):
+    async def on_command_error(self, ctx: commands.Context, error):
         if hasattr(ctx.command, "on_error"):
             return
 
@@ -37,6 +37,10 @@ class CommandErrorHandler(commands.Cog):
                 )
             except discord.HTTPException:
                 pass
+            
+        elif isinstance(error, commands.MissingRequiredArgument):
+            param = error.param
+            await ctx.send(f"Missing parameter `{param.name}`", ephemeral=True)
 
         elif isinstance(error, commands.BadArgument):
             if ctx.command.qualified_name == "tag list":

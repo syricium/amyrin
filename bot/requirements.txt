@@ -16,3 +16,4 @@ fuzzywuzzy==0.18.0
 humanfriendly==10.0
 sphobjinv==2.3.1
 lxml==4.9.2
+python-magic==0.4.27

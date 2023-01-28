@@ -2,7 +2,6 @@ import importlib
 import logging
 import logging.handlers
 import os
-import re
 import traceback
 from datetime import datetime
 from textwrap import indent
@@ -13,10 +12,9 @@ import discord
 import mystbin
 from core.context import Context
 from discord.ext import commands, ipc
-from discord.ext.commands import Context, Greedy
+from discord.ext.commands import Greedy
 from dotenv import load_dotenv
 from modules.util.documentation.parser import DocParser
-from modules.util.views.paginator import EmbedPaginator
 from playwright.async_api import async_playwright
 from playwright.async_api._generated import Browser
 
@@ -52,9 +50,6 @@ class onyx(commands.Bot):
         self.ipc = ipc.Server(
             self, host="0.0.0.0", secret_key=os.getenv("IPC_SECRET_KEY")
         )
-
-        name = "onyc" if self.debug else "onyx"
-        self.google_regex = re.compile(rf"^hey {name} ?(?P<query>.+)$", re.IGNORECASE)
 
         self.color = (
             0x2F3136  # color used for embeds and whereever else it would be appropiate
@@ -127,59 +122,6 @@ class onyx(commands.Bot):
 
         if self.debug and not await self.is_owner(message.author):
             return
-
-        if await self.is_owner(message.author) and (
-            match := self.google_regex.match(message.content)
-        ):
-            from modules.util.scraping.google import GoogleScraper
-
-            query = match.group("query")
-            scraper = GoogleScraper(self.browser)
-
-            number = 1
-            match = re.search(r"\(num=(?P<number>[0-9]+)\)", query, re.IGNORECASE)
-            if match:
-                number = int(match.group("number"))
-
-                start = match.start()
-                end = match.end()
-
-                string = query[start:end]
-
-                query = query.replace(string, "").strip()
-
-            resp = await scraper.search(query)
-
-            if not resp.websites:
-                return await message.reply("No results")
-
-            if number > len(resp.websites):
-                number = len(resp.websites)
-
-            if number <= 0:
-                number = 1
-
-            embeds = []
-            for website in resp.websites:
-                title = website.title
-                description = website.description
-                url = website.href
-                index = resp.websites.index(website)
-
-                embed = discord.Embed(
-                    title=str(title),
-                    description=str(description),
-                    url=url or "https://example.com",
-                    color=self.color,
-                )
-
-                embed.set_footer(text=f"Index: {index+1}/{len(resp.websites)}")
-
-                embeds.append(embed)
-
-            paginator = EmbedPaginator(embeds, index=number)
-            paginator.index = number - 1
-            await paginator.start(message, timeout=30)
 
         await self.process_commands(message)
 
