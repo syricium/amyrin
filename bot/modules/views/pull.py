@@ -15,8 +15,8 @@ class PullView(View):
         self.context = context
         self.modules = modules
 
-        if not modules:
-            del self.children[0]
+        for child in self.children:
+            child.disabled = True
 
         super().__init__()
 
