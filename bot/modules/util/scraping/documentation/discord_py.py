@@ -210,7 +210,7 @@ class DocScraper:
             path = os.path.join(rtfs_repo, dir_name)
 
             if not os.path.isdir(path):
-                await self._shell(f"git clone {url} {path}")
+                await self._shell(f"git clone {url} {rtfs_repo}")
 
             await self._rtfs_index_directory(repo, path)
 
