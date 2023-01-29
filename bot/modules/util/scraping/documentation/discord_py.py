@@ -13,7 +13,7 @@ from fuzzywuzzy import fuzz
 from humanfriendly import format_timespan
 from playwright._impl._api_types import TimeoutError as PlaywrightTimeoutError
 from playwright.async_api._generated import Browser
-from sphobjinv import DataObjStr, Inventory
+from sphobjinv import DataObjStr, Inventory #
 
 from modules.util.executor import executor
 from modules.util.timer import Timer
