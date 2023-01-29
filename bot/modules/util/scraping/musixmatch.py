@@ -12,7 +12,7 @@ class Response:
     def __bool__(self):
         return any(
             getattr(self, str(attr)) for attr in dir(self) if not attr.startswith("_")
-        )
+        ) #
 
     def to_json(self):
         result = {}
