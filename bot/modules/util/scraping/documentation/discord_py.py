@@ -249,7 +249,7 @@ class DocScraper:
             results.append(item)
 
         matches = sorted(
-            results, key=lambda x: fuzz.partial_ratio(query, x.name), reverse=True
+            results, key=lambda x: fuzz.ratio(query, x.name), reverse=True
         )[:limit]
 
         return RTFSResults(matches)
