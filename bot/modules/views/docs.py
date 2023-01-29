@@ -38,6 +38,7 @@ class DocSelect(discord.ui.Select):
 class DocView(View):
     def __init__(
         self,
+        context: commands.Context,
         scraper: DocScraper,
         query: str,
         color: int,
@@ -47,6 +48,7 @@ class DocView(View):
 
         self.query = query
         self.scraper = scraper
+        self.context = context
         self._color = color
         self._message: discord.Embed = None
         
@@ -94,7 +96,9 @@ class DocView(View):
         embed = docs.to_embed(color=self._color)
         await self._send(interaction, embed=embed, view=self)
     
-    async def start(self, ctx: commands.Context):
+    async def start(self):
+        ctx = self.context
+        
         results = await self.scraper.search(self.query, limit=8, exclude_std=True)
         
         if not results:

@@ -133,8 +133,8 @@ class Documentation(commands.Cog):
     ):
         scraper = self.scrapers["discord.py"]
 
-        view = DocView(scraper, query, self.bot.color)
-        await view.start(ctx)
+        view = DocView(ctx, scraper, query, self.bot.color)
+        await view.start()
 
 
 async def setup(bot):
