@@ -15,9 +15,6 @@ class PullView(View):
         self.context = context
         self.modules = modules
 
-        for child in self.children:
-            child.disabled = True
-
         super().__init__()
 
     async def on_error(
