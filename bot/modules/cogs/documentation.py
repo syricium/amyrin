@@ -4,6 +4,7 @@ from discord.ext import commands
 from core.bot import onyx
 from modules.util.scraping.documentation.discord_py import \
     DocScraper as DiscordScraper
+from modules.views.docs import DocView
 
 from . import *
 
@@ -28,7 +29,8 @@ class Documentation(commands.Cog):
             description="The query you want to search for in the default (discord.py) documentation"
         ),
     ):
-        await self.discord_py(ctx, query)
+        await self.rtfm_discord_py(ctx, query)
+
 
     @command(
         rtfm.command,
@@ -37,7 +39,7 @@ class Documentation(commands.Cog):
         description="Search the documentation of discord.py",
         examples=["{prefix}rtfm dpy commands.bot"],
     )
-    async def discord_py(
+    async def rtfm_discord_py(
         self,
         ctx: commands.Context,
         query: str = commands.param(
@@ -61,7 +63,7 @@ class Documentation(commands.Cog):
             description="The query you want to search for in the default (discord.py) source code"
         ),
     ):
-        await self.discord_py(ctx, query)
+        await self.rtfs_discord_py(ctx, query)
 
     @command(
         rtfs.command,
@@ -70,7 +72,7 @@ class Documentation(commands.Cog):
         description="Search the source code of discord.py",
         examples=["{prefix}rtfm dpy commands.bot"],
     )
-    async def discord_py(
+    async def rtfs_discord_py(
         self,
         ctx: commands.Context,
         query: str = commands.param(
@@ -89,9 +91,50 @@ class Documentation(commands.Cog):
                 ctx._message = await ctx.reply(text)
 
         results = await scraper.rtfs_search(query, limit=8, updater=update)
-        await ctx._message.edit(
+        
+        if ctx._message:
+            func = ctx._message.edit
+        else:
+            func = ctx.send
+        
+        await func(
             content=None, embed=results.to_embed(color=self.bot.color)
         )
+        
+    @command(
+        commands.hybrid_group,
+        aliases=["docs"],
+        description="Get documentation of a module",
+        examples=["{prefix}rtfm commands.bot"],
+    )
+    async def documentation(
+        self,
+        ctx: commands.Context,
+        query: str = commands.param(
+            description="The query you want to search for in the default (discord.py) documentation"
+        ),
+    ):
+        await self.docs_discord_py(ctx, query)
+
+
+    @command(
+        documentation.command,
+        name="latest",
+        aliases=["dpy", "d.py"],
+        description="Get documentation of a discord.py module",
+        examples=["{prefix}docs dpy commands.bot"],
+    )
+    async def docs_discord_py(
+        self,
+        ctx: commands.Context,
+        query: str = commands.param(
+            description="The query you want to search for in the discord.py documentation"
+        ),
+    ):
+        scraper = self.scrapers["discord.py"]
+
+        view = DocView(scraper, query, self.bot.color)
+        await view.start(ctx)
 
 
 async def setup(bot):

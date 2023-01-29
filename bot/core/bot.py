@@ -121,9 +121,6 @@ class onyx(commands.Bot):
         if message.author.bot:
             return
 
-        if self.debug and not await self.is_owner(message.author):
-            return
-
         await self.process_commands(message)
 
     async def on_ready(self) -> None:

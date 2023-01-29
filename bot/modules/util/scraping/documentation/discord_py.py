@@ -11,6 +11,7 @@ import discord
 from bs4 import BeautifulSoup, SoupStrainer, Tag
 from fuzzywuzzy import fuzz
 from humanfriendly import format_timespan
+import humanfriendly
 from playwright._impl._api_types import TimeoutError as PlaywrightTimeoutError
 from playwright.async_api._generated import Browser
 from sphobjinv import DataObjStr, Inventory
@@ -60,18 +61,21 @@ class Documentation:
     time: Optional[int]
 
     def to_embed(self, color: Optional[int] = None):
-        description = f"```py\n{self.full_name}\n```{self.description}".strip()
+        description = f"```py\n{self.full_name}\n```\n{self.description}".strip()
 
         embed = discord.Embed(
             title=self.name, url=self.url, description=description, color=color
         )
         embed.set_author(
-            name="Discord.py Documentation",
+            name="discord.py documentation",
             icon_url="https://cdn.discordapp.com/attachments/381963689470984203/1068553303908155442/sW87z7N.png",
         )
 
         for name, field in self.fields.items():
             embed.add_field(name=name, value=field, inline=False)
+            
+        time = humanfriendly.format_timespan(self.time)
+        embed.set_footer(text=f"Scraped in {time}")
 
         return embed
 
@@ -189,11 +193,6 @@ class DocScraper:
         for root, _, files in os.walk(path):
             for file in files:
                 filepath = os.path.join(root, file)
-                without_root = filepath[len(path) :]
-                first_directory = without_root.split("/")[0]
-
-                if first_directory == "types":
-                    continue
 
                 if not file.endswith(".py"):
                     continue
@@ -232,8 +231,6 @@ class DocScraper:
         if self._rtfs_cache == {}:
             await update("Building cache")
             await self._build_rtfs_cache()
-
-        await update("Formatting results")
 
         results = []
 
@@ -306,7 +303,7 @@ class DocScraper:
             strainer = SoupStrainer("section")
 
             parsed_url = urlparse(url)
-            name = parsed_url.fragment #
+            name = parsed_url.fragment
 
             content = await self._get_html(url)
             soup = BeautifulSoup(content, "lxml", parse_only=strainer)
@@ -375,7 +372,7 @@ class DocScraper:
 
     @executor()
     def _get_search(
-        self, query: str, limit: Optional[int] = None
+        self, query: str
     ) -> set[str, str, bool]:
         if not hasattr(self, "_inv") or self._inv is None:
             self._inv = Inventory(url=self._inv_url)
@@ -399,21 +396,25 @@ class DocScraper:
 
             return urljoin(self._base_url, new_uri.geturl())
 
-        matches = [
-            (item, fuzz.partial_ratio(query, item.name)) for item in self._inv.objects
-        ]
-        sorted_matches = sorted(matches, key=lambda x: x[1], reverse=True)[:limit]
+        matches = sorted(
+            self._inv.objects,
+            key=lambda x: fuzz.ratio(query, x.name),
+            reverse=True
+        )
 
         return [
             (get_name(item), build_uri(item), bool(item.domain == "std"))
-            for item, _ in sorted_matches
+            for item in matches
         ]
 
-    async def search(self, query: str, limit: int = None) -> SearchResults:
+    async def search(self, query: str, limit: int = None, exclude_std: bool = False) -> SearchResults:
         with Timer() as timer:
-            results = await self._get_search(query=query, limit=limit)
+            results = await self._get_search(query=query)
 
-        return SearchResults(results=results, query_time=timer.time)
+        if exclude_std:
+            results = [result for result in results if not result[2]]
+
+        return SearchResults(results=results[:limit], query_time=timer.time)
 
 
 async def setup(bot):
