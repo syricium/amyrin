@@ -47,7 +47,7 @@ class Documentation(commands.Cog):
         ),
     ):
         if ctx.interaction:
-            await ctx.interaction.defer()
+            await ctx.interaction.response.defer()
         
         scraper = self.scrapers["discord.py"]
 
@@ -83,7 +83,7 @@ class Documentation(commands.Cog):
         ),
     ):
         if ctx.interaction:
-            await ctx.interaction.defer()
+            await ctx.interaction.response.defer()
         
         scraper = self.scrapers["discord.py"]
 
@@ -138,7 +138,7 @@ class Documentation(commands.Cog):
         ),
     ):
         if ctx.interaction:
-            await ctx.interaction.defer()
+            await ctx.interaction.response.defer()
             
         scraper = self.scrapers["discord.py"]
 
