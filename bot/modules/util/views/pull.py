@@ -36,7 +36,7 @@ class PullView(View):
             except commands.ExtensionNotLoaded:
                 imp = importlib.import_module(module)
                 importlib.reload(imp)
-                reloaded[module] = None
+                reloaded[module] = None #
             except Exception as exc:
                 error = traceback.format_exception(type(exc), exc, exc.__traceback__)
                 reloaded[module] = "\n".join(error)
