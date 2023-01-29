@@ -2,7 +2,8 @@ import discord
 from discord.ext import commands
 
 from core.bot import onyx
-from modules.util.scraping.documentation.discord_py import DocScraper as DiscordScraper
+from modules.util.scraping.documentation.discord_py import \
+    DocScraper as DiscordScraper
 
 from . import *
 
@@ -87,9 +88,7 @@ class Documentation(commands.Cog):
             else:
                 ctx._message = await ctx.reply(text)
 
-        results = await scraper.rtfs_search(
-            query, limit=8, updater=update
-        )
+        results = await scraper.rtfs_search(query, limit=8, updater=update)
         await ctx._message.edit(
             content=None, embed=results.to_embed(color=self.bot.color)
         )

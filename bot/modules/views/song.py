@@ -5,8 +5,9 @@ from typing import List
 import discord
 from discord.ext import commands
 
-from ..scraping.musixmatch import (MusixMatchScraper, SearchResult, Song,
-                                   VerificationError)
+from modules.util.scraping.musixmatch import (MusixMatchScraper, SearchResult,
+                                              Song, VerificationError)
+
 from .base import View
 
 

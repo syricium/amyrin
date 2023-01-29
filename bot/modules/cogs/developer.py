@@ -16,7 +16,7 @@ from discord.ext import commands
 from jishaku.codeblocks import codeblock_converter
 
 from core.bot import onyx
-from modules.util.views.pull import PullView
+from modules.views.pull import PullView
 
 from . import *
 
@@ -206,6 +206,8 @@ class Developer(commands.Cog):
             return await ctx.send(file=result)
         if isinstance(result, str):
             return await ctx.send(f"```py\n{str(result).replace('``', '`​`')}```")
+        if isinstance(result, discord.ui.View):
+            return await ctx.send(view=result)
         if result is None:
             return
 
@@ -301,7 +303,7 @@ class Developer(commands.Cog):
             description += f"\n\nChanged Modules:\n{reloaded}"
 
         embed = discord.Embed(description=description)
-        await ctx.send(embed=embed, view=PullView(ctx, output, modules=modules))
+        await ctx.send(embed=embed, view=PullView(ctx, modules=modules))
 
 
 async def setup(bot):

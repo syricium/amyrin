@@ -8,7 +8,7 @@ from discord.ext import commands
 from core.bot import onyx
 from modules.util.converters import FileConverter, URLObject
 from modules.util.executor import executor
-from modules.util.views.song import SongView
+from modules.views.song import SongView
 
 from . import *
 

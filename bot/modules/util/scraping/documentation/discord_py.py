@@ -117,7 +117,11 @@ class DocScraper:
             ]
         ] = {}
 
-        self._rtfs_repo = ("discord.py", "https://github.com/Rapptz/discord.py", "discord")
+        self._rtfs_repo = (
+            "discord.py",
+            "https://github.com/Rapptz/discord.py",
+            "discord",
+        )
 
     async def _shell(self, command: str) -> str:
         proc = await asyncio.wait_for(
@@ -135,7 +139,7 @@ class DocScraper:
 
     def _rtfs_index_file(self, filepath: os.PathLike) -> None:
         repo, _, _ = self._rtfs_repo
-        
+
         def append_item(name: str, file: os.PathLike, position: set[int, int]):
             repos_path = os.path.join(os.getcwd(), "rtfs_repos")
             repo_path = os.path.join(repos_path, repo)
@@ -201,7 +205,7 @@ class DocScraper:
 
     async def _build_rtfs_cache(self):
         repo, url, dir_name = self._rtfs_repo
-        
+
         rtfs_repos = os.path.join(os.getcwd(), "rtfs_repos")
         rtfs_repo = os.path.join(rtfs_repos, repo)
         path = os.path.join(rtfs_repo, dir_name)
