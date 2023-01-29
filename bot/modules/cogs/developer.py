@@ -156,8 +156,6 @@ class Developer(commands.Cog):
         self.module_regex = re.compile(r"bot\/(?P<module>modules\/.+\.py)")
 
     def reload_modules(self, source: str):
-        if "already up to date." in source.lower():
-            raise TypeError("Already up to date")
         results: List[str] = self.module_regex.findall(source)
         reloaded = {}
         for result in results:
@@ -301,16 +299,9 @@ class Developer(commands.Cog):
         permissions=CommandPermissions(template=PermissionTemplates.text_command),
     )
     @commands.is_owner()
-    async def pull(self, ctx):
-        result = await self.shell("git pull")
-
-        if (
-            isinstance(result[1], str)
-            and "please commit your changes or stash them before you merge."
-            in result[1].lower()
-        ):
-            await self.shell("git stash")
-            result = await self.shell("git pull")
+    async def pull(self, ctx: commands.Context):
+        async with ctx.typing():
+            result = await self.shell("git pull --force --autostash --stat")
 
         output = "\n".join(i.strip() for i in result)
 
