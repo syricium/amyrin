@@ -306,7 +306,7 @@ class DocScraper:
             strainer = SoupStrainer("section")
 
             parsed_url = urlparse(url)
-            name = parsed_url.fragment
+            name = parsed_url.fragment #
 
             content = await self._get_html(url)
             soup = BeautifulSoup(content, "lxml", parse_only=strainer)

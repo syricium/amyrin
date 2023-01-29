@@ -302,7 +302,7 @@ class Developer(commands.Cog):
         if reloaded:
             description += f"\n\nChanged Modules:\n{reloaded}"
 
-        embed = discord.Embed(description=description)
+        embed = discord.Embed(description=description, color=self.bot.color)
         await ctx.send(embed=embed, view=PullView(ctx, modules=modules))
 
 
