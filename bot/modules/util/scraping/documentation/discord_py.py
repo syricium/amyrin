@@ -124,7 +124,7 @@ class DocScraper:
             asyncio.create_subprocess_shell(
                 command,
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE, #
+                stderr=asyncio.subprocess.PIPE,
             ),
             timeout=60,
         )
