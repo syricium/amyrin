@@ -388,13 +388,14 @@ class DocScraper:
             return name
 
         def build_uri(obj: DataObjStr) -> str:
-            if obj.domain == "std":
-                return urljoin(self._base_url, obj.uri)
+            location = obj.uri
+            
+            if location.endswith('$'):
+                location = location[:-1] + obj.name
+                
+            return urljoin(self._base_url, obj.uri)
 
-            parsed_uri = urlparse(obj.uri)
-            new_uri = parsed_uri._replace(params="", fragment=obj.name)
-
-            return urljoin(self._base_url, new_uri.geturl())
+        query = re.sub(r'^(?:discord\.(?:ext\.)?)?(?:commands\.)?(.+)', r'\1', query)
 
         matches = sorted(
             self._inv.objects,
