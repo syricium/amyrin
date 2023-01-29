@@ -294,7 +294,7 @@ class Developer(commands.Cog):
         if output.lower() == "already up to date.":
             return await ctx.send("Already up to date")
 
-        modules = self.module_regex.findall(output)
+        modules = [x.replace(os.sep, ".") for x in self.module_regex.findall(output)]
         reloaded = "\n".join(modules)
         description = f"```sh\n{output}```"
         if reloaded:
