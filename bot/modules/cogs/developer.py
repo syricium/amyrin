@@ -295,13 +295,14 @@ class Developer(commands.Cog):
 
     @command(
         commands.command,
-        examples=["{prefix}pull"],
+        aliases=["pull"],
+        examples=["{prefix}update"],
         permissions=CommandPermissions(template=PermissionTemplates.text_command),
     )
     @commands.is_owner()
-    async def pull(self, ctx: commands.Context):
+    async def update(self, ctx: commands.Context):
         async with ctx.typing():
-            result = await self.shell("git pull --force --autostash --stat")
+            result = await self.shell("git pull --force --stat")
 
         output = "\n".join(i.strip() for i in result)
 
