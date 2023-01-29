@@ -393,9 +393,7 @@ class DocScraper:
             if location.endswith('$'):
                 location = location[:-1] + obj.name
                 
-            return urljoin(self._base_url, obj.uri)
-
-        query = re.sub(r'^(?:discord\.(?:ext\.)?)?(?:commands\.)?(.+)', r'\1', query)
+            return urljoin(self._base_url, location)
 
         matches = sorted(
             self._inv.objects,
