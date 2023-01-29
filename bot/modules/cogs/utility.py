@@ -35,12 +35,14 @@ class Utility(commands.Cog):
         await view.start()
 
     @command(
+        commands.command,
         name="cdn",
         description="Upload a file to the syrice mediaserver",
         examples=[
             "{prefix}cdn https://cdn.discordapp.com/attachments/381963689470984203/1068926488453332993/sQWxQyB.jpg"
         ],
     )
+    @commands.is_owner()
     async def cdn_upload(
         self,
         ctx: commands.Context,
