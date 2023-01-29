@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 
 from core.bot import onyx
-from modules.util.scraping.documentation.discord_py import DocScraper
+from modules.util.scraping.documentation.discord_py import DocScraper as DiscordScraper
 
 from . import *
 
@@ -12,7 +12,7 @@ class Documentation(commands.Cog):
         super().__init__()
         self.bot: onyx = bot
 
-        self.scrapers = {"discord.py": DocScraper(self.bot.bcontext)}
+        self.scrapers = {"discord.py": DiscordScraper(self.bot.bcontext)}
 
     @command(
         commands.hybrid_group,
@@ -88,7 +88,7 @@ class Documentation(commands.Cog):
                 ctx._message = await ctx.reply(text)
 
         results = await scraper.rtfs_search(
-            "discord.py", query, limit=8, updater=update
+            query, limit=8, updater=update
         )
         await ctx._message.edit(
             content=None, embed=results.to_embed(color=self.bot.color)

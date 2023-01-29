@@ -105,25 +105,19 @@ class DocScraper:
 
         self._rtfs_commit: Optional[str] = None
         self._rtfs_cache: Optional[
-            Dict[
-                str,
-                List[
-                    TypedDict(
-                        "rtfs",
-                        {
-                            "name": str,
-                            "file": str,
-                            "position": set[int, int],  # start and end position
-                        },
-                    )
-                ],
+            List[
+                TypedDict(
+                    "rtfs",
+                    {
+                        "name": str,
+                        "file": str,
+                        "position": set[int, int],  # start and end position
+                    },
+                )
             ]
         ] = {}
 
-        self._rtfs_repos = {
-            # name          github url                              directory name
-            "discord.py": ("https://github.com/Rapptz/discord.py", "discord")
-        }
+        self._rtfs_repo = ("discord.py", "https://github.com/Rapptz/discord.py", "discord")
 
     async def _shell(self, command: str) -> str:
         proc = await asyncio.wait_for(
@@ -139,7 +133,9 @@ class DocScraper:
 
         return stdout.decode(), stderr.decode()
 
-    def _rtfs_index_file(self, repo: str, filepath: os.PathLike) -> None:
+    def _rtfs_index_file(self, filepath: os.PathLike) -> None:
+        repo, _, _ = self._rtfs_repo
+        
         def append_item(name: str, file: os.PathLike, position: set[int, int]):
             repos_path = os.path.join(os.getcwd(), "rtfs_repos")
             repo_path = os.path.join(repos_path, repo)
@@ -154,9 +150,9 @@ class DocScraper:
             name = name.replace("discord.ext.", "").replace("discord.", "")
 
             data = {"name": name, "file": filepath, "position": position}
-            if not self._rtfs_cache.get(repo):
-                self._rtfs_cache[repo] = []
-            self._rtfs_cache[repo].append(data)
+            if not self._rtfs_cache:
+                self._rtfs_cache = []
+            self._rtfs_cache.append(data)
 
         with open(filepath) as f:
             code = f.read()
@@ -185,7 +181,7 @@ class DocScraper:
                     append_item(name, filepath, child_position)
 
     @executor()
-    def _rtfs_index_directory(self, repo: str, path: os.PathLike):
+    def _rtfs_index_directory(self, path: os.PathLike):
         for root, _, files in os.walk(path):
             for file in files:
                 filepath = os.path.join(root, file)
@@ -201,22 +197,22 @@ class DocScraper:
                 if file.startswith("_"):
                     continue
 
-                self._rtfs_index_file(repo, filepath)
+                self._rtfs_index_file(filepath)
 
     async def _build_rtfs_cache(self):
+        repo, url, dir_name = self._rtfs_repo
+        
         rtfs_repos = os.path.join(os.getcwd(), "rtfs_repos")
-        for repo, (url, dir_name) in self._rtfs_repos.items():
-            rtfs_repo = os.path.join(rtfs_repos, repo)
-            path = os.path.join(rtfs_repo, dir_name)
+        rtfs_repo = os.path.join(rtfs_repos, repo)
+        path = os.path.join(rtfs_repo, dir_name)
 
-            if not os.path.isdir(path):
-                await self._shell(f"git clone {url} {rtfs_repo}")
+        if not os.path.isdir(path):
+            await self._shell(f"git clone {url} {rtfs_repo}")
 
-            await self._rtfs_index_directory(repo, path)
+        await self._rtfs_index_directory(path)
 
     async def rtfs_search(
         self,
-        repo: str,
         query: str,
         limit: Optional[int] = None,
         updater: Callable = None,
@@ -237,12 +233,10 @@ class DocScraper:
 
         results = []
 
-        repo_url, repo_path = self._rtfs_repos[repo]
+        _, repo_url, repo_path = self._rtfs_repo
         full_repo_url = repo_url + f"/tree/master"
 
-        data = self._rtfs_cache[repo]
-
-        for item in data:
+        for item in self._rtfs_cache:
             name = item.get("name")
             file = item.get("file")
             start, end = item.get("position")
