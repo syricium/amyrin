@@ -1,3 +1,4 @@
+import os
 import re
 import traceback
 from typing import Dict, List, Optional
@@ -27,17 +28,16 @@ class PullView(View):
         await interaction.response.send_message(tb, view=TrashView(self.context.author))
 
     async def reload_modules(self) -> Dict[str, Optional[Exception]]:
-        if "already up to date." in self._output.lower():
-            raise TypeError("Already up to date")
         reloaded = {}
-        for i in self.modules:
+        for module in self.modules:
+            module = module.replace(os.sep, ".")
             try:
-                await self.context.bot.reload_extension(i)
+                await self.context.bot.reload_extension(module)
             except Exception as exc:
                 error = traceback.format_exception(type(exc), exc, exc.__traceback__)
-                reloaded[i] = "\n".join(error)
+                reloaded[module] = "\n".join(error)
             else:
-                reloaded[i] = None
+                reloaded[module] = None
 
         return reloaded
 

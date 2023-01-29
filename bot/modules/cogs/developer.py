@@ -155,21 +155,6 @@ class Developer(commands.Cog):
         self.bot: onyx = bot
         self.module_regex = re.compile(r"bot\/(?P<module>modules\/.+)\.py")
 
-    def reload_modules(self, source: str):
-        results: List[str] = self.module_regex.findall(source)
-        reloaded = {}
-        for result in results:
-            result = result.replace(os.sep, ".")
-            try:
-                self.bot.reload_extension(result.replace(os.sep, "."))
-            except Exception as exc:
-                error = traceback.format_exception(type(exc), exc, exc.__traceback__)
-                reloaded[result] = error
-            else:
-                reloaded[result] = None
-
-        return reloaded
-
     async def shell(self, code: str, wait: bool = True):
         proc = await asyncio.subprocess.create_subprocess_shell(
             code, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
