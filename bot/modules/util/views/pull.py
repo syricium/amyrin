@@ -1,3 +1,4 @@
+import importlib
 import os
 import re
 import traceback
@@ -32,6 +33,9 @@ class PullView(View):
         for module in self.modules:
             try:
                 await self.context.bot.reload_extension(module)
+            except commands.ExtensionNotLoaded:
+                imp = importlib.import_module(module)
+                importlib.reload(imp)
             except Exception as exc:
                 error = traceback.format_exception(type(exc), exc, exc.__traceback__)
                 reloaded[module] = "\n".join(error)
