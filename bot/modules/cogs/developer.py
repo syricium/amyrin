@@ -153,7 +153,7 @@ class Developer(commands.Cog):
     def __init__(self, bot):
         super().__init__()
         self.bot: onyx = bot
-        self.module_regex = re.compile(r"bot\/(?P<module>modules\/.+\.py)")
+        self.module_regex = re.compile(r"bot\/(?P<module>modules\/.+)\.py")
 
     def reload_modules(self, source: str):
         results: List[str] = self.module_regex.findall(source)
@@ -161,7 +161,7 @@ class Developer(commands.Cog):
         for result in results:
             result = result.replace(os.sep, ".")
             try:
-                self.bot.reload_extension(result)
+                self.bot.reload_extension(result.replace(os.sep, "."))
             except Exception as exc:
                 error = traceback.format_exception(type(exc), exc, exc.__traceback__)
                 reloaded[result] = error
