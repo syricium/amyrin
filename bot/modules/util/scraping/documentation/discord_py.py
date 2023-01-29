@@ -235,8 +235,9 @@ class DocScraper:
             rtfs_repo = os.path.join(rtfs_repos, repo)
             path = os.path.join(rtfs_repo, dir_name)
             
-            if not os.path.isdir(path) and os.listdir(path) != []:
-                continue
+            if not os.path.isdir(path):
+                if os.listdir(path) != []:
+                    continue
             
             await self._shell(f"git clone {url} {repo}")
             
