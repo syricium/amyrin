@@ -1,23 +1,25 @@
+import ast
 import asyncio
-from io import StringIO
+import inspect
 import os
 import re
-import traceback
-import ast
-import import_expression
-import textwrap
 import sys
-import inspect
+import textwrap
+import traceback
+from contextlib import redirect_stdout
+from io import StringIO
 from typing import List
 
 import discord
-from core.bot import onyx
+import import_expression
 from discord.ext import commands
-from modules.util.views.pull import PullView
 from jishaku.codeblocks import codeblock_converter
-from contextlib import redirect_stdout
+
+from core.bot import onyx
+from modules.util.views.pull import PullView
 
 from . import *
+
 
 # very evidently stolen from https://github.com/Gorialis/jishaku
 class Transformer(ast.NodeTransformer):
@@ -120,6 +122,7 @@ class Transformer(ast.NodeTransformer):
             col_offset=node.col_offset,
         )
 
+
 class Updater:
     def __init__(self, context: commands.Context):
         super().__init__()
@@ -144,6 +147,7 @@ class Updater:
             self.task.cancel()
         self.running = False
         await self.message.add_reaction("\N{WHITE HEAVY CHECK MARK}")
+
 
 class Developer(commands.Cog):
     def __init__(self, bot):
@@ -175,7 +179,7 @@ class Developer(commands.Cog):
         if wait:
             await proc.wait()
         return tuple(i.decode() for i in await proc.communicate())
-    
+
     def parse_code(self, code: str) -> ast.Module:
         code = f"""async def func():
     from importlib import import_module as {import_expression.constants.IMPORTER}
@@ -199,7 +203,7 @@ class Developer(commands.Cog):
             block.body[-1] = _yield
 
         return code
-    
+
     async def send(self, ctx: commands.Context, result):
         if isinstance(result, list):
             if all(isinstance(i, discord.Embed) for i in result):
@@ -223,15 +227,13 @@ class Developer(commands.Cog):
             return
 
         return await ctx.send(str(result))
-    
+
     @command(
         commands.command,
         name="eval",
         aliases=["e"],
-        examples=["{prefix}eval print(\"hot gay sex\")"],
-        permissions=CommandPermissions(
-            template=PermissionTemplates.text_command
-        )
+        examples=['{prefix}eval print("hot gay sex")'],
+        permissions=CommandPermissions(template=PermissionTemplates.text_command),
     )
     @commands.is_owner()
     async def _eval(self, ctx, *, code: codeblock_converter):
@@ -259,7 +261,7 @@ class Developer(commands.Cog):
             env[k] = v
 
         """ Code Parsing """
-        
+
         try:
             res = self.parse_code(code)
             code = compile(res, filename="<eval>", mode="exec")
@@ -286,7 +288,7 @@ class Developer(commands.Cog):
                 result = "".join(
                     traceback.format_exception(type(exc), exc, exc.__traceback__)
                 )
-                    
+
         if not result:
             result = buffer.getvalue()
 

@@ -10,13 +10,14 @@ from typing import Literal, Optional
 import aiohttp
 import discord
 import mystbin
-from core.context import Context
 from discord.ext import commands, ipc
 from discord.ext.commands import Greedy
 from dotenv import load_dotenv
-from modules.util.documentation.parser import DocParser
 from playwright.async_api import async_playwright
 from playwright.async_api._generated import Browser
+
+from core.context import Context
+from modules.util.documentation.parser import DocParser
 
 load_dotenv()
 

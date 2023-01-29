@@ -5,8 +5,9 @@ from datetime import datetime
 import discord
 import humanize
 import psutil
-from core.bot import onyx
 from discord.ext import commands
+
+from core.bot import onyx
 
 from . import *
 
@@ -16,10 +17,7 @@ class Miscellaneous(commands.Cog):
         super().__init__()
         self.bot: onyx = bot
 
-    @command(
-        description="Get the ping of the bot",
-        examples=["{prefix}ping"]
-    )
+    @command(description="Get the ping of the bot", examples=["{prefix}ping"])
     async def ping(self, ctx: commands.Context | discord.Interaction):
         websocket = round(self.bot.latency * 1000, 2)
 
@@ -33,7 +31,7 @@ class Miscellaneous(commands.Cog):
 
     @command(
         description="Get info about oynx's file stats and host stats",
-        examples=["{prefix}about"]
+        examples=["{prefix}about"],
     )
     @commands.cooldown(1, 20)
     async def about(self, ctx: commands.Context | discord.Interaction):

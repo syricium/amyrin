@@ -1,7 +1,7 @@
+import inspect
 import json
 import os
 import string
-import inspect
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, TypedDict
 
@@ -106,12 +106,14 @@ class DocParser:
 
 
 async def setup(bot: commands.Bot):
-    command_prefix = bot.command_prefix if bot.command_prefix is not commands.when_mentioned else bot.user.mention
-    
+    command_prefix = (
+        bot.command_prefix
+        if bot.command_prefix is not commands.when_mentioned
+        else bot.user.mention
+    )
+
     prefix = (
-        command_prefix
-        if command_prefix in string.punctuation
-        else command_prefix + " "
+        command_prefix if command_prefix in string.punctuation else command_prefix + " "
     )
     variable_mapping = {"prefix": prefix}
 

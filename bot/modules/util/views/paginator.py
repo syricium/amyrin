@@ -13,7 +13,8 @@ async def paginate(
     emojis: dict = None,
     index: int = None,
     page_count: int = None,
-    *args, **kwargs
+    *args,
+    **kwargs,
 ):
     return await EmbedPaginator(embeds, emojis, index, page_count).start(
         ctx, timeout=timeout, *args, **kwargs
@@ -230,22 +231,26 @@ class EmbedPaginator:
         await self.update(self.pages - 1, interaction)
 
     async def start(
-        self, ctx: commands.Context | discord.Interaction, timeout: int = 10, *args, **kwargs
+        self,
+        ctx: commands.Context | discord.Interaction,
+        timeout: int = 10,
+        *args,
+        **kwargs,
     ):
         self.context = ctx
         view = self.new_view(timeout=timeout)
-        
+
         if kwarg_view := kwargs.pop("view"):
             for child in kwarg_view.children:
                 view.add_item(child)
-        
+
         kwargs = dict(embed=self.page, view=view, *args, **kwargs)
-        
+
         if isinstance(ctx, commands.Context):
             self.message = await ctx.send(**kwargs)
         elif isinstance(ctx, discord.Message):
             self.message = await ctx.channel.send(**kwargs)
         elif isinstance(discord.Interaction):
             self.message = await ctx.response.send_message(**kwargs)
-        
+
         return self.message

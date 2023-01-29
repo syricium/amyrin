@@ -2,8 +2,9 @@ import os
 import pathlib
 import traceback
 
-from core.bot import onyx
 from discord.ext import commands, tasks
+
+from core.bot import onyx
 
 IGNORE_EXTENSIONS = []
 

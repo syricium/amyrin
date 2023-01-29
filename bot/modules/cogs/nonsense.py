@@ -1,5 +1,6 @@
-from core.bot import onyx
 from discord.ext import commands
+
+from core.bot import onyx
 
 from . import *
 
@@ -11,7 +12,7 @@ class Nonsense(commands.Cog):
 
     @command(
         description="command dedicated to discord user jazz#0001",
-        examples=["{prefix}jazz"]
+        examples=["{prefix}jazz"],
     )
     async def jazz(self, ctx: commands.Context):
         await ctx.send(
@@ -19,5 +20,7 @@ class Nonsense(commands.Cog):
         )
 
 
-async def setup(bot):  # remove this function or this entire file if you dont want these commands
+async def setup(
+    bot,
+):  # remove this function or this entire file if you dont want these commands
     await bot.add_cog(Nonsense(bot))

@@ -1,10 +1,11 @@
+import inspect
+import os
 import re
-import aiohttp
-import discord
 from io import BufferedIOBase, BytesIO
 from typing import Any
-import os
-import inspect
+
+import aiohttp
+import discord
 from discord.ext import commands
 
 MENTION_REGEX = re.compile(r"<@(!?)([0-9]*)>")
@@ -23,6 +24,7 @@ def format_list(items: list, seperator: str = "or", brackets: str = ""):
 
     msg = ", ".join(list(new_items)[:-1]) + f" {seperator} " + list(new_items)[-1]
     return msg
+
 
 URL_REGEX = re.compile(
     r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*(),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"

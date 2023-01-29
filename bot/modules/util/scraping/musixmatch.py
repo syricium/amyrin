@@ -72,10 +72,7 @@ class SearchResults(list):
 
 
 class MusixMatchScraper:
-    def __init__(
-        self,
-        browser: Browser = None
-    ):
+    def __init__(self, browser: Browser = None):
         self._browser = browser
 
         self._base_url = "https://www.musixmatch.com"

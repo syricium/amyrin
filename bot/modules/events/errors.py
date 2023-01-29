@@ -37,7 +37,7 @@ class CommandErrorHandler(commands.Cog):
                 )
             except discord.HTTPException:
                 pass
-            
+
         elif isinstance(error, commands.MissingRequiredArgument):
             param = error.param
             await ctx.send(f"Missing parameter `{param.name}`", ephemeral=True)
