@@ -258,24 +258,19 @@ class Developer(commands.Cog):
         """ Evaluating """
         result = None
         async with Updater(ctx):
-            buffer = StringIO()
             try:
-                with redirect_stdout(buffer):
-                    exec(code, env)
-                    func = env.get("func")
-                    if inspect.isasyncgenfunction(func):
-                        async for i in func():
-                            if i is not None:
-                                await self.send(ctx, i)
-                    else:
-                        result = await eval("func()", env)
+                exec(code, env)
+                func = env.get("func")
+                if inspect.isasyncgenfunction(func):
+                    async for i in func():
+                        if i is not None:
+                            await self.send(ctx, i)
+                else:
+                    result = await eval("func()", env)
             except Exception as exc:
                 result = "".join(
                     traceback.format_exception(type(exc), exc, exc.__traceback__)
                 )
-
-        if not result:
-            result = buffer.getvalue()
 
         if result is not None and len(str(result.strip())) > 0:
             await self.send(ctx, result)
