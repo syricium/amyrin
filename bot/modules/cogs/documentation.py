@@ -46,6 +46,9 @@ class Documentation(commands.Cog):
             description="The query you want to search for in the discord.py documentation"
         ),
     ):
+        if ctx.interaction:
+            await ctx.interaction.defer()
+        
         scraper = self.scrapers["discord.py"]
 
         results = await scraper.search(query, limit=8)
@@ -79,6 +82,9 @@ class Documentation(commands.Cog):
             description="The function or class you want to search for in the discord.py source code"
         ),
     ):
+        if ctx.interaction:
+            await ctx.interaction.defer()
+        
         scraper = self.scrapers["discord.py"]
 
         global message
@@ -131,6 +137,9 @@ class Documentation(commands.Cog):
             description="The query you want to search for in the discord.py documentation"
         ),
     ):
+        if ctx.interaction:
+            await ctx.interaction.defer()
+            
         scraper = self.scrapers["discord.py"]
 
         view = DocView(ctx, scraper, query, self.bot.color)
