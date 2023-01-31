@@ -19,11 +19,7 @@ debug = (
 )
 
 def intialize_ipc() -> Client:
-    host = "bot" if not debug else "127.0.0.1"
-    return Client(
-        host=host,
-        secret_key=os.getenv("IPC_SECRET_KEY")
-    )
+    return Client(host="127.0.0.1", secret_key=os.getenv("IPC_SECRET_KEY"))
     
 def setup_logger():
     logger = logging.getLogger(__name__)
@@ -111,4 +107,4 @@ for root, _, files in os.walk(direc):
             app.include_router(getattr(imp, "router"))
 
 if __name__ == "__main__":
-    uvicorn.run("app:app", host="0.0.0.0", port=5000, reload=debug)
+    uvicorn.run("app:app", host="0.0.0.0", port=5400, reload=debug)
