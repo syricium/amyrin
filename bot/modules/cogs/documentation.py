@@ -2,8 +2,6 @@ import discord
 from discord.ext import commands
 
 from core.bot import onyx
-from modules.util.scraping.documentation.discord_py import \
-    DocScraper as DiscordScraper
 from modules.views.docs import DocView
 
 from . import *
@@ -13,8 +11,8 @@ class Documentation(commands.Cog):
     def __init__(self, bot):
         super().__init__()
         self.bot: onyx = bot
-
-        self.scrapers = {"discord.py": DiscordScraper(self.bot.bcontext)}
+        
+        self.scrapers = {}
 
     @command(
         commands.hybrid_group,

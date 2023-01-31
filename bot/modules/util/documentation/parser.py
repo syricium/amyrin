@@ -1,12 +1,10 @@
-import inspect
-import json
 import os
 import string
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any, Dict, List, TypedDict
 
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 from discord.ext.commands.parameters import Parameter as CommandsParameter
 
 root = os.path.dirname(os.path.realpath(__file__))

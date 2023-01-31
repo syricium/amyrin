@@ -13,9 +13,10 @@ from core.bot import onyx
 
 jishaku.Flags.NO_DM_TRACEBACK = True
 jishaku.Flags.NO_UNDERSCORE = True
+jishaku.Flags.HIDE = True
 
 
-class Jsk(*OPTIONAL_FEATURES, *STANDARD_FEATURES):
+class Jishaku(*OPTIONAL_FEATURES, *STANDARD_FEATURES):
     @Feature.Command(
         name="jishaku",
         aliases=["jsk"],
@@ -135,4 +136,4 @@ class Jsk(*OPTIONAL_FEATURES, *STANDARD_FEATURES):
 
 
 async def setup(bot: onyx):
-    await bot.add_cog(Jsk(bot=bot))
+    await bot.add_cog(Jishaku(bot=bot))

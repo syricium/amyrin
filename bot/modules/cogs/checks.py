@@ -15,7 +15,7 @@ class Checks(commands.Cog):
         if not await self.bot.is_owner(ctx.author):
             await ctx.reply(
                 "You are trying to use the debug version of the bot, which only my owner can, "
-                f"the prefix of the stable version is {self.bot.user.mention}"
+                f"the prefix of the stable version is {self.bot.user.mention} (ex: {self.bot.user.mention} help)"
             )
             return False
         elif ctx.interaction:

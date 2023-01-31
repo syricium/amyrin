@@ -1,9 +1,13 @@
 import ast
 import asyncio
+import functools
 import inspect
+import json
+import logging
 import os
 import re
 from dataclasses import dataclass
+import traceback
 from typing import Callable, Dict, List, Optional, TypedDict
 from urllib.parse import ParseResult, urljoin, urlparse
 
@@ -18,7 +22,8 @@ from sphobjinv import DataObjStr, Inventory
 
 from modules.util.executor import executor
 from modules.util.timer import Timer
-
+from core.bot import onyx
+from core.constants import *
 
 class Response:
     def __bool__(self):
@@ -52,13 +57,15 @@ class RTFSResults:
 
 @dataclass(frozen=True)
 class Documentation:
-    full_name: str
     name: str
+    full_name: str
     description: str
     examples: List[str]
     url: str
     fields: Dict[str, List[str]]
-    time: Optional[int]
+    
+    def to_json(self):
+        return {v: getattr(self, v) for v in dir(self) if not v.startswith("_") and v != "to_json"}
 
     def to_embed(self, color: Optional[int] = None):
         description = f"```py\n{self.full_name}\n```\n{self.description}".strip()
@@ -71,11 +78,11 @@ class Documentation:
             icon_url="https://cdn.discordapp.com/attachments/381963689470984203/1068553303908155442/sW87z7N.png",
         )
 
+        field_limit = 1024
         for name, field in self.fields.items():
+            if len(field) > field_limit:
+                field = field[:field_limit-3]+"..."
             embed.add_field(name=name, value=field, inline=False)
-            
-        time = humanfriendly.format_timespan(self.time)
-        embed.set_footer(text=f"Scraped in {time}")
 
         return embed
 
@@ -100,15 +107,19 @@ class SearchResults:
 
 
 class DocScraper:
-    def __init__(self, browser: Optional[Browser] = None):
+    def __init__(self, browser: Optional[Browser] = None, bot: onyx = None):
+        self._logger: logging.Logger = None
+        
         self._browser = browser
+        self._bot = bot
 
         self._base_url = "https://discordpy.readthedocs.io/en/stable/"
         self._inv_url = urljoin(self._base_url, "objects.inv")
-        self._inv: Inventory = None
+        
+        self.strgcls._docs_cache: List[Documentation] = []
 
-        self._rtfs_commit: Optional[str] = None
-        self._rtfs_cache: Optional[
+        self.strgcls._rtfs_commit: Optional[str] = None
+        self.strgcls._rtfs_cache: Optional[
             List[
                 TypedDict(
                     "rtfs",
@@ -126,6 +137,43 @@ class DocScraper:
             "https://github.com/Rapptz/discord.py",
             "discord",
         )
+        
+        self._setup_logger()
+        
+        if not getattr(self.strgcls, "_rtfm_caching_task", None):
+            self.strgcls._rtfm_caching_task = asyncio.create_task(self._build_rtfm_cache())
+            
+        if not getattr(self.strgcls, "_rtfs_caching_task", None):
+            self.strgcls._rtfs_caching_task = asyncio.create_task(self._build_rtfs_cache())
+            
+        if not getattr(self.strgcls, "_docs_caching_task", None):
+            self.strgcls._docs_caching_task = asyncio.create_task(self._cache_all_documentations())
+        
+    @property
+    def strgcls(self):
+        return self._bot if self._bot.debug else self
+
+    def _setup_logger(self) -> None:
+        if not os.path.isdir("logs/scrapers"):
+            os.mkdir("logs/scrapers")
+        
+        logger = logging.getLogger(__name__)
+        logger.setLevel(logging.INFO)
+
+        handler = logging.handlers.RotatingFileHandler(
+            filename="logs/scrapers/discord_py.log",
+            encoding="utf-8",
+            maxBytes=32 * 1024 * 1024,  # 32 MiB
+            backupCount=5,  # Rotate through 5 files
+        )
+        dt_fmt = "%Y-%m-%d %H:%M:%S"
+        formatter = logging.Formatter(
+            "[{asctime}] [{levelname:<8}] {name}: {message}", dt_fmt, style="{"
+        )
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+
+        self._logger = logger
 
     async def _shell(self, command: str) -> str:
         proc = await asyncio.wait_for(
@@ -158,9 +206,9 @@ class DocScraper:
             name = name.replace("discord.ext.", "").replace("discord.", "")
 
             data = {"name": name, "file": filepath, "position": position}
-            if not self._rtfs_cache:
-                self._rtfs_cache = []
-            self._rtfs_cache.append(data)
+            if not self.strgcls._rtfs_cache:
+                self.strgcls._rtfs_cache = []
+            self.strgcls._rtfs_cache.append(data)
 
         with open(filepath) as f:
             code = f.read()
@@ -203,16 +251,25 @@ class DocScraper:
                 self._rtfs_index_file(filepath)
 
     async def _build_rtfs_cache(self):
+        if self.strgcls._rtfs_cache != {}:
+            return
+        
         repo, url, dir_name = self._rtfs_repo
 
         rtfs_repos = os.path.join(os.getcwd(), "rtfs_repos")
         rtfs_repo = os.path.join(rtfs_repos, repo)
         path = os.path.join(rtfs_repo, dir_name)
+        commit_path = os.path.join(rtfs_repo, ".git/refs/heads/master")
+        
+        with open(commit_path) as f:
+            self.strgcls._rtfs_commit = f.readline().strip()
 
         if not os.path.isdir(path):
             await self._shell(f"git clone {url} {rtfs_repo}")
 
         await self._rtfs_index_directory(path)
+        
+        self._logger.info("RTFS cache built")
 
     async def rtfs_search(
         self,
@@ -220,24 +277,16 @@ class DocScraper:
         limit: Optional[int] = None,
         updater: Callable = None,
     ) -> List[RTFSItem]:
-        async def update(message: str):
-            if updater is None:
-                return
-
-            if inspect.iscoroutinefunction(updater):
-                return await updater(message)
-            return updater(message)
-
-        if self._rtfs_cache == {}:
-            await update("Building cache")
-            await self._build_rtfs_cache()
+        if not self.strgcls._rtfs_caching_task.done():
+            await self.update("Waiting for RTFS caching task")
+            await self.strgcls._rtfs_caching_task
 
         results = []
 
         _, repo_url, repo_path = self._rtfs_repo
         full_repo_url = repo_url + f"/tree/master"
 
-        for item in self._rtfs_cache:
+        for item in self.strgcls._rtfs_cache:
             name = item.get("name")
             file = item.get("file")
             start, end = item.get("position")
@@ -256,26 +305,22 @@ class DocScraper:
         return RTFSResults(matches)
 
     async def _get_html(
-        self, url: str, timeout: int = 0, wait_until: Optional[str] = None
+        self, url: str, timeout: int = 0, wait: bool = True
     ) -> str:
         page = await self._browser.new_page()
 
         await page.goto(url)
 
-        try:
-            await page.wait_for_load_state("networkidle", timeout=timeout)
-        except PlaywrightTimeoutError:
-            pass
+        if wait:
+            try:
+                await page.wait_for_load_state("networkidle", timeout=timeout)
+            except PlaywrightTimeoutError:
+                pass
 
         content = await page.content()
         await page.close()
 
         return content
-
-    async def _get_soup(self, url: str, *args, **kwargs) -> BeautifulSoup:
-        content = await self._get_html(url, *args, **kwargs)
-
-        return BeautifulSoup(content, "html.parser")
 
     def _build_url(self, partial_url: str) -> str:
         return self._base_url + partial_url
@@ -287,134 +332,240 @@ class DocScraper:
             tag_name = element.text
             tag_href = element["href"]
 
-            parsed_href = urlparse(tag_href)
-            if not parsed_href.netloc:
-                raw_url = parsed_url._replace(params="", fragment="").geturl()
-                tag_href = urljoin(raw_url, tag_href)
+            if parsed_url:
+                parsed_href = urlparse(tag_href)
+                if not parsed_href.netloc:
+                    raw_url = parsed_url._replace(params="", fragment="").geturl()
+                    tag_href = urljoin(raw_url, tag_href)
 
             text = template.format(tag_name, tag_href)
         else:
             text = element.text
 
         return text
+    
+    @executor()
+    def _get_documentation(self, element: Tag, page_url: str) -> Documentation:
+        url = element.find("a", class_="headerlink") \
+            .get("href", None)
+        parsed_url = urlparse(urljoin(page_url, url))
+        
+        full_name = element.text
+        name = element.attrs.get("id")
+        documentation = element.parent.find("dd")
+        description = []
+        examples = []
 
-    async def get_documentation(self, url: str) -> Documentation:
-        with Timer() as timer:
-            strainer = SoupStrainer("section")
-
-            parsed_url = urlparse(url)
-            name = parsed_url.fragment
-
-            content = await self._get_html(url)
-            soup = BeautifulSoup(content, "lxml", parse_only=strainer)
-
-            element = soup.find("dt", id=name)
-
-            full_name = element.text
-            documentation = element.parent.find("dd")
-            description = []
-            examples = []
-
-            field_list = documentation.find("dl", class_="field-list simple")
-            fields = {}
+        field_list = documentation.find("dl", class_="field-list", recursive=False)
+        fields = {}
+        if field_list:
             for field in field_list.findChildren("dt"):
                 field: Tag = field
-
+                
                 key = field.text
-                value: Tag = [x for x in field.next_siblings if isinstance(x, Tag)][
+                values: List[Tag] = [x for x in field.next_siblings if isinstance(x, Tag)][
                     0
-                ].find("p")
+                ].find_all("p")
 
-                elements = []
-                for element in value.contents:
-                    text = self._get_text(element, parsed_url, template="[`{}`]({})")
+                elements: List[List[str]] = []
+                for value in values:
+                    texts = []
+                    for element in value.contents:
+                        text = self._get_text(element, parsed_url, template="[`{}`]({})")
 
-                    elements.append(text)
+                        texts.append(text)
+                    
+                    elements.append(texts)
+                        
 
-                fields[key] = "".join(elements)
+                fields[key] = "\n".join("".join(element) for element in elements)
 
-            for child in documentation.find_all("p", recursive=False):
-                child: Tag = child
+        for child in documentation.find_all("p", recursive=False):
+            child: Tag = child
 
-                # this is to stop getting the description after examples,
-                # because those are too large, no idea if this will actually works
-                if child.attrs.get("class"):
-                    break
+            # this is to stop getting the description after examples,
+            # because those are too large, no idea if this will actually works
+            if child.attrs.get("class"):
+                break
 
-                elements = []
-                for element in child.contents:
-                    text = self._get_text(element, parsed_url)
+            elements = []
+            for element in child.contents:
+                text = self._get_text(element, parsed_url)
 
-                    elements.append(text)
+                elements.append(text)
 
-                description.append("".join(elements))
+            description.append("".join(elements))
 
-            for child in documentation.find_all("div", class_="highlight"):
-                examples.append(child.find("pre").text)
+        for child in documentation.find_all("div", class_="highlight"):
+            examples.append(child.find("pre").text)
 
-            if version_modified := documentation.find("span", class_="versionmodified"):
-                description.append(f"*{version_modified.text}*")
+        if version_modified := documentation.find("span", class_="versionmodified"):
+            description.append(f"*{version_modified.text}*")
 
-            description = "\n\n".join(description).replace("Example:", "").strip()
+        description = "\n\n".join(description).replace("Example:", "").strip()
 
-            if full_name.endswith("¶"):
-                full_name = full_name[:-1]
+        full_name = full_name \
+            .replace("¶", "") \
+            .strip()
+                
+        url = parsed_url.geturl()
 
         return Documentation(
-            full_name=full_name,
             name=name,
+            full_name=full_name,
             description=description,
             examples=examples,
             url=url,
-            fields=fields,
-            time=timer.time,
+            fields=fields
         )
+        
+    async def _get_all_manual_documentations(self, url: str) -> List[Documentation]:
+        @executor()
+        def bs4(content: str):
+            strainer = SoupStrainer("dl")
 
-    @executor()
-    def _get_search(
-        self, query: str
-    ) -> set[str, str, bool]:
-        if not hasattr(self, "_inv") or self._inv is None:
-            self._inv = Inventory(url=self._inv_url)
+            soup = BeautifulSoup(content, "lxml", parse_only=strainer)
 
-        def get_name(obj: DataObjStr) -> str:
-            name = obj.name if obj.dispname == "-" else obj.dispname
-            if obj.domain == "std":
-                name = f"{obj.role}: {name}"
+            return soup.find_all("dt", class_="sig sig-object py")
 
-            if self._inv.project == "discord.py":
-                name = name.replace("discord.ext.commands.", "").replace("discord.", "")
+        elements = await bs4(await self._get_html(url))
 
-            return name
-
-        def build_uri(obj: DataObjStr) -> str:
-            location = obj.uri
-            
-            if location.endswith('$'):
-                location = location[:-1] + obj.name
+        results = []
+        for element in elements:
+            result = await self._get_documentation(element, url)
+            results.append(result)
+        
+        return results
+        
+    async def _cache_all_documentations(self) -> Dict[str, List[Documentation]]:
+        if self.strgcls._docs_cache != []:
+            return
+        
+        self._logger.info("Starting documentation caching")
+        
+        @executor()
+        def bs4(content: str):
+            soup = BeautifulSoup(content, "lxml")
+        
+            manual_section = soup.find("section", id="manuals")
+            manual_lis = manual_section.find_all("li", class_="toctree-l1")
+            manual_as = [manual_li.find("a") for manual_li in manual_lis]
+            return [(manual.text, self._build_url(manual.get("href"))) for manual in manual_as]
+        
+        manuals = await bs4(await self._get_html(self._base_url))
+        
+        results: Dict[str, List[Documentation]] = {}
+        for name, manual in manuals:
+            try:
+                documentations = await self._get_all_manual_documentations(manual)
+            except Exception as exc:
+                error = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+                self._logger.error(f"Error occured while trying to cache \"{name}\":\n{error}")
+            else:
+                if name not in results.keys():
+                    results[name] = []
                 
-            return urljoin(self._base_url, location)
+                results[name].append(documentations)
+                for documentation in documentations:
+                    self.strgcls._docs_cache.append(documentation)
+                    
+                self._logger.info(f"{name} documentation added to doc cache")
+            
+        if all(name in results.keys() for name, _ in manuals):
+            self._logger.info("Successfully cached all manuals")
+        else:
+            amount = sum(name in results.keys() for name, _ in manuals)
+            self._logger.info(f"Successfully cached {amount}/{len(manuals)} manuals")
+        
+        return results
+        
+    async def _wait_for_docs(self, name: str):
+        while True:
+            if self.strgcls._docs_caching_task.cancelled():
+                return False
+            if elem := discord.utils.get(self.strgcls._docs_cache, name=name):
+                return elem
+            await asyncio.sleep(1)
 
-        matches = sorted(
-            self._inv.objects,
-            key=lambda x: fuzz.ratio(query, x.name),
-            reverse=True
-        )
+    async def get_documentation(self, name: str, updater: Callable = None) -> Documentation:
+        result = discord.utils.get(self.strgcls._docs_cache, name=name)
+        
+        if not result:
+            await self.update(updater, f"{LOADING} Waiting for caching task, processing command once it's done.")
+            result = await self._wait_for_docs(name)
+            
+        if result is False:
+            return
+            
+        return result
+    
+    async def _build_rtfm_cache(self):
+        if getattr(self.strgcls, "_inv", None) is not None:
+            return
+        
+        partial = functools.partial(Inventory, url=self._inv_url)
+        loop = asyncio.get_running_loop()
+        self.strgcls._inv = await loop.run_in_executor(None, partial)
+        
+        self._logger.info("RTFM cache built")
+        
+    async def update(self, updater: Callable, message: str):
+        if updater:
+            loop = asyncio.get_running_loop()
+            
+            if inspect.iscoroutinefunction(updater):
+                return await updater(message)
+            
+            partial = functools.partial(updater, message)
+            return await loop.run_in_executor(None, partial)
 
-        return [
-            (get_name(item), build_uri(item), bool(item.domain == "std"))
-            for item in matches
-        ]
-
-    async def search(self, query: str, limit: int = None, exclude_std: bool = False) -> SearchResults:
+    async def search(self, query: str, limit: int = None, exclude_std: bool = False, updater: Callable = None) -> SearchResults:
         with Timer() as timer:
-            results = await self._get_search(query=query)
+            if not self.strgcls._rtfm_caching_task.done():
+                await self.update(updater, "Waiting for RTFM caching to be done")
+                await self.strgcls._rtfm_caching_task
+                
+            # implement task error handling later
+
+            def get_name(obj: DataObjStr) -> str:
+                name = obj.name if obj.dispname == "-" else obj.dispname
+                original_name = name
+                
+                if obj.domain == "std":
+                    name = f"{obj.role}: {name}"
+
+                if self.strgcls._inv.project == "discord.py":
+                    name = name.replace("discord.ext.commands.", "").replace("discord.", "")
+
+                return name, original_name
+
+            def build_uri(obj: DataObjStr) -> str:
+                location = obj.uri
+                
+                if location.endswith('$'):
+                    location = location[:-1] + obj.name
+                    
+                return urljoin(self._base_url, location)
+
+            matches = sorted(
+                self.strgcls._inv.objects,
+                key=lambda x: fuzz.ratio(query, x.name),
+                reverse=True
+            )
+
+            results = [
+                (*get_name(item), build_uri(item), bool(item.domain == "std"))
+                for item in matches
+            ]
 
         if exclude_std:
-            results = [result for result in results if not result[2]]
+            results = [result for result in results if not result[3]]
 
         return SearchResults(results=results[:limit], query_time=timer.time)
 
 
 async def setup(bot):
+    if cog := bot.get_cog("Documentation"):
+        if (attr := getattr(cog, "scrapers", None)) is not None:
+            attr["discord.py"] = DocScraper(getattr(bot, "bcontext", None), bot)
     pass

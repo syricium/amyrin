@@ -75,7 +75,7 @@ class onyx(commands.Bot):
         self.session = aiohttp.ClientSession()
 
         self.playwright = await async_playwright().start()
-        self.browser = await self.playwright.chromium.launch(headless=not self.debug)
+        self.browser = await self.playwright.chromium.launch()
         self.bcontext = await self.browser.new_context()
 
         rootdir = os.getcwd()
@@ -88,9 +88,11 @@ class onyx(commands.Bot):
                 continue
 
             for file in files:  # iterate through all files in a subdirectory
-                if not file.endswith(".py"):
-                    continue
                 fn = file[:-3]
+                
+                if os.path.isdir(os.path.join(prefix, fn)):
+                    continue
+                
                 name = f"{prefix}.{fn}"
                 try:
                     imp = importlib.import_module(name)
@@ -156,7 +158,7 @@ class onyx(commands.Bot):
 
                 self.logger.error(f"Error occured closing {task} ({func}):\n{exc}")
 
-        exit()
+        await super().close()
 
     async def get_context(self, message, *, cls=Context) -> Context:
         return await super().get_context(message, cls=cls)

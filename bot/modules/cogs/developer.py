@@ -1,127 +1,23 @@
 import ast
 import asyncio
+from copy import copy
 import inspect
 import os
 import re
 import sys
 import textwrap
 import traceback
-from contextlib import redirect_stdout
-from io import StringIO
-from typing import List
 
 import discord
 import import_expression
 from discord.ext import commands
 from jishaku.codeblocks import codeblock_converter
+from jishaku.repl import KeywordTransformer
 
 from core.bot import onyx
 from modules.views.pull import PullView
 
 from . import *
-
-
-# very evidently stolen from https://github.com/Gorialis/jishaku
-class Transformer(ast.NodeTransformer):
-    def visit_Return(self, node):
-        if node.value is None:
-            return node
-
-        return ast.If(
-            test=ast.NameConstant(
-                value=True, lineno=node.lineno, col_offset=node.col_offset
-            ),
-            body=[
-                ast.Expr(
-                    value=ast.Yield(
-                        value=node.value, lineno=node.lineno, col_offset=node.col_offset
-                    ),
-                    lineno=node.lineno,
-                    col_offset=node.col_offset,
-                ),
-                ast.Return(value=None, lineno=node.lineno, col_offset=node.col_offset),
-            ],
-            orelse=[],
-            lineno=node.lineno,
-            col_offset=node.col_offset,
-        )
-
-    def visit_Delete(self, node):
-        return ast.If(
-            test=ast.NameConstant(
-                value=True, lineno=node.lineno, col_offset=node.col_offset
-            ),
-            body=[
-                ast.If(
-                    test=ast.Compare(
-                        left=ast.Str(
-                            s=target.id, lineno=node.lineno, col_offset=node.col_offset
-                        ),
-                        ops=[ast.In(lineno=node.lineno, col_offset=node.col_offset)],
-                        comparators=[self.globals_call(node)],
-                        lineno=node.lineno,
-                        col_offset=node.col_offset,
-                    ),
-                    body=[
-                        ast.Expr(
-                            value=ast.Call(
-                                func=ast.Attribute(
-                                    value=self.globals_call(node),
-                                    attr="pop",
-                                    ctx=ast.Load(),
-                                    lineno=node.lineno,
-                                    col_offset=node.col_offset,
-                                ),
-                                args=[
-                                    ast.Str(
-                                        s=target.id,
-                                        lineno=node.lineno,
-                                        col_offset=node.col_offset,
-                                    )
-                                ],
-                                keywords=[],
-                                lineno=node.lineno,
-                                col_offset=node.col_offset,
-                            ),
-                            lineno=node.lineno,
-                            col_offset=node.col_offset,
-                        )
-                    ],
-                    orelse=[
-                        ast.Delete(
-                            targets=[target],
-                            lineno=node.lineno,
-                            col_offset=node.col_offset,
-                        )
-                    ],
-                    lineno=node.lineno,
-                    col_offset=node.col_offset,
-                )
-                if isinstance(target, ast.Name)
-                else ast.Delete(
-                    targets=[target], lineno=node.lineno, col_offset=node.col_offset
-                )
-                for target in node.targets
-            ],
-            orelse=[],
-            lineno=node.lineno,
-            col_offset=node.col_offset,
-        )
-
-    def globals_call(self, node):
-        return ast.Call(
-            func=ast.Name(
-                id="globals",
-                ctx=ast.Load(),
-                lineno=node.lineno,
-                col_offset=node.col_offset,
-            ),
-            args=[],
-            keywords=[],
-            lineno=node.lineno,
-            col_offset=node.col_offset,
-        )
-
 
 class Updater:
     def __init__(self, context: commands.Context):
@@ -149,7 +45,7 @@ class Updater:
         await self.message.add_reaction("\N{WHITE HEAVY CHECK MARK}")
 
 
-class Developer(commands.Cog):
+class Developer(commands.Cog, command_attrs={"hidden": True}):
     def __init__(self, bot):
         super().__init__()
         self.bot: onyx = bot
@@ -171,7 +67,7 @@ class Developer(commands.Cog):
         code: ast.Module = import_expression.parse(code)
         ast.fix_missing_locations(code)
         block: ast.AsyncFunctionDef = code.body[-1]
-        Transformer().generic_visit(block)
+        KeywordTransformer().generic_visit(block)
 
         last = block.body[-1]
 
@@ -274,6 +170,20 @@ class Developer(commands.Cog):
 
         if result is not None and len(str(result.strip())) > 0:
             await self.send(ctx, result)
+            
+    @command(
+        commands.command,
+        name="as",
+        aliases=["su"],
+        examples=["{prefix}as flowerpad#0001 help"],
+        permissions=CommandPermissions(template=PermissionTemplates.text_command),
+    )
+    @commands.is_owner()
+    async def _as(self, ctx, user: discord.Member, *, command: str):
+        msg = copy(ctx.message)
+        msg.content = f"{self.bot.command_prefix}{command}"
+        msg.author = user
+        await self.bot.process_commands(msg)
 
     @command(
         commands.command,

@@ -1,9 +1,9 @@
 import os
 import pathlib
-import traceback
 
 from discord.ext import commands, tasks
 
+import traceback
 from core.bot import onyx
 
 IGNORE_EXTENSIONS = []
@@ -39,23 +39,21 @@ class HotReload(commands.Cog):
                     continue
             except KeyError:
                 self.last_modified_time[extension] = time
-
-            try:
-                await self.bot.reload_extension(extension)
-            except commands.ExtensionError as exc:
-                exc = "".join(
-                    traceback.format_exception(type(exc), exc, exc.__traceback__)
-                )
-
-                self.bot.logger.error(
-                    f"Error occured loading module {extension}:\n{exc}"
-                )
-            except commands.ExtensionNotLoaded:
-                continue
             else:
-                self.bot.logger.debug(f"Reloaded extension: {extension}")
-            finally:
-                self.last_modified_time[extension] = time
+                try:
+                    await self.bot.reload_extension(extension)
+                except commands.ExtensionError as exc:
+                    exc = "".join(
+                        traceback.format_exception(type(exc), exc, exc.__traceback__)
+                    )
+                    
+                    self.bot.logger.error(f"Error occured loading module {extension}:\n{exc}")
+                except commands.ExtensionNotLoaded:
+                    continue
+                else:
+                    self.bot.logger.debug(f"Reloaded extension: {extension}")
+                finally:
+                    self.last_modified_time[extension] = time
 
     @hot_reload_loop.before_loop
     async def cache_last_modified_time(self):
