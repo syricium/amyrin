@@ -146,7 +146,7 @@ class DocView(View):
     async def start(self):
         ctx = self.context
         
-        results = await self.scraper.search(self.query, limit=7, exclude_std=True)
+        results = await self.scraper.search(self.query, limit=25, exclude_std=True)
         
         if not results:
             await self._send(ctx, content="No results found")
