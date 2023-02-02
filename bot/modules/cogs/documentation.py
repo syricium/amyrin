@@ -27,7 +27,7 @@ class Documentation(commands.Cog):
             description="The query you want to search for in the default (discord.py) documentation"
         ),
     ):
-        await self.rtfm_discord_py(ctx, *query)
+        await self.rtfm_discord_py(ctx, *, query)
 
 
     @command(
