@@ -23,11 +23,11 @@ class Documentation(commands.Cog):
     async def rtfm(
         self,
         ctx: commands.Context,
-        *, query: str = commands.param(
+        query: str = commands.param(
             description="The query you want to search for in the default (discord.py) documentation"
         ),
     ):
-        await self.rtfm_discord_py(ctx, *, query)
+        await self.rtfm_discord_py(ctx, query)
 
 
     @command(
@@ -40,7 +40,7 @@ class Documentation(commands.Cog):
     async def rtfm_discord_py(
         self,
         ctx: commands.Context,
-        *, query: str = commands.param(
+        query: str = commands.param(
             description="The query you want to search for in the discord.py documentation"
         ),
     ):
@@ -60,7 +60,7 @@ class Documentation(commands.Cog):
     async def rtfs(
         self,
         ctx: commands.Context,
-        *, query: str = commands.param(
+        query: str = commands.param(
             description="The query you want to search for in the default (discord.py) source code"
         ),
     ):
@@ -76,7 +76,7 @@ class Documentation(commands.Cog):
     async def rtfs_discord_py(
         self,
         ctx: commands.Context,
-        *, query: str = commands.param(
+        query: str = commands.param(
             description="The function or class you want to search for in the discord.py source code"
         ),
     ):
@@ -114,7 +114,7 @@ class Documentation(commands.Cog):
     async def documentation(
         self,
         ctx: commands.Context,
-        *, query: str = commands.param(
+        query: str = commands.param(
             description="The query you want to search for in the default (discord.py) documentation"
         ),
     ):
@@ -131,7 +131,7 @@ class Documentation(commands.Cog):
     async def docs_discord_py(
         self,
         ctx: commands.Context,
-        *, query: str = commands.param(
+        query: str = commands.param(
             description="The query you want to search for in the discord.py documentation"
         ),
     ):
