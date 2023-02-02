@@ -96,7 +96,7 @@ class SearchResults:
         return self.results
 
     def to_embed(self, color: Optional[int] = None):
-        description = "\n".join(f"[`{name}`]({url})" for name, url, _ in self.results)
+        description = "\n".join(f"[`{name}`]({url})" for name, _, url, _ in self.results)
 
         embed = discord.Embed(description=description, color=color)
 
