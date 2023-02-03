@@ -1,9 +1,12 @@
 import ast
 import asyncio
 from copy import copy
+from datetime import datetime
 import inspect
 import os
+import random
 import re
+import string
 import sys
 import textwrap
 import traceback
@@ -14,8 +17,10 @@ from discord.ext import commands
 from jishaku.codeblocks import codeblock_converter
 from jishaku.repl import KeywordTransformer
 
+from typing import AsyncGenerator, Dict
 from core.bot import onyx
 from modules.views.pull import PullView
+from modules.views.paginator import paginate, WrapList
 
 from . import *
 
@@ -110,14 +115,26 @@ class Developer(commands.Cog, command_attrs={"hidden": True}):
         return await ctx.send(str(result))
 
     @command(
-        commands.command,
+        commands.group,
         name="eval",
         aliases=["e"],
         examples=['{prefix}eval print("hot gay sex")'],
         permissions=CommandPermissions(template=PermissionTemplates.text_command),
+        invoke_without_command=True
     )
     @commands.is_owner()
     async def _eval(self, ctx, *, code: codeblock_converter):
+        def gen_eval_name():
+            while True:
+                name = "".join(random.choices(string.ascii_lowercase, k=6))
+                if name not in self.bot.eval_tasks.keys():
+                    return name
+                
+        async def handle_async_generator(func: AsyncGenerator):
+            async for i in func():
+                if i is not None:
+                    await self.send(ctx, i)
+        
         code = code.content
 
         env = {
@@ -158,11 +175,13 @@ class Developer(commands.Cog, command_attrs={"hidden": True}):
                 exec(code, env)
                 func = env.get("func")
                 if inspect.isasyncgenfunction(func):
-                    async for i in func():
-                        if i is not None:
-                            await self.send(ctx, i)
+                    task = asyncio.create_task(handle_async_generator(func))
                 else:
-                    result = await eval("func()", env)
+                    task = asyncio.create_task(func())
+                eval_name = gen_eval_name()
+                self.bot.eval_tasks[eval_name] = (task, datetime.utcnow())
+                task.add_done_callback(lambda result: self.bot.eval_tasks.pop(eval_name, None))
+                await task
             except Exception as exc:
                 result = "".join(
                     traceback.format_exception(type(exc), exc, exc.__traceback__)
@@ -170,6 +189,94 @@ class Developer(commands.Cog, command_attrs={"hidden": True}):
 
         if result is not None and len(str(result.strip())) > 0:
             await self.send(ctx, result)
+            
+    @command(
+        _eval.command,
+        name="cancel",
+        aliases=["c"],
+        examples=['{prefix}eval cancel ffasbl'],
+        permissions=CommandPermissions(template=PermissionTemplates.text_command)
+    )
+    async def cancel_eval(self, ctx: commands.Context, name: str):
+        name = name.lower()
+        
+        if name == "all":
+            if not self.bot.eval_tasks:
+                return await ctx.send("There is no eval tasks currently running")
+            
+            results: Dict[str, Optional[Exception]] = {}
+            
+            for name, (task, time) in self.bot.eval_tasks.items():
+                if task.cancelling() or task.done():
+                    continue
+                
+                try:
+                    task.cancel()
+                except Exception as exc:
+                    error = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+                    results[name] = error
+                else:
+                    results[name] = None
+                    
+            embed = discord.Embed(
+                description="\n".join(
+                    f"\N{WHITE HEAVY CHECK MARK} `{name}`"
+                    if not error else
+                    f"\N{CROSS MARK} `{name}`\n```py\n{error}\n```"
+                    for name, error in results.items()
+                ),
+                color=self.bot.color
+            )
+            
+            return await ctx.send(embed=embed)
+        
+        if not self.bot.eval_tasks.get(name):
+            return await ctx.send(f"Eval task does not exist")
+        
+        task, time = self.bot.eval_tasks[name]
+        task: asyncio.Task
+        
+        if task.done():
+            return await ctx.send("Task is already completed")
+        
+        if task.cancelling():
+            return await ctx.send("Task is already cancelling")
+        
+        async with Updater(ctx):
+            task.cancel()
+        self.bot.eval_tasks.pop(name, None)
+        
+        await ctx.send(f"Successfully cancelled task")
+        
+    @command(
+        _eval.command,
+        name="tasks",
+        aliases=["t", "l"],
+        examples=['{prefix}eval tasks'],
+        permissions=CommandPermissions(template=PermissionTemplates.text_command)
+    )
+    async def eval_tasks(self, ctx: commands.Context):
+        if not self.bot.eval_tasks:
+            return await ctx.send("There is no eval tasks currently running")
+
+        tasks: Dict[str, Dict[asyncio.Task, datetime]] = self.bot.eval_tasks.items()
+        wrapped_tasks = WrapList([(key, *value) for key, value in tasks], length=6)
+        
+        embeds = [
+            discord.Embed(
+                description="\n".join(
+                    f"`{name}` invoked at {discord.utils.format_dt(time, 'F')}"
+                    for name, task, time in tasks
+                )
+            )
+            for tasks in wrapped_tasks
+        ]
+        
+        await paginate(
+            ctx,
+            embeds,
+            timeout=30
+        )
             
     @command(
         commands.command,

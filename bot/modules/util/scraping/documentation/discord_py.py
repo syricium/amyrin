@@ -113,12 +113,12 @@ class DocScraper:
         self._browser = browser
         self._bot = bot
 
-        self._base_url = "https://discordpy.readthedocs.io/en/stable/"
+        self._base_url = "https://dpy.rtd.0a3.cc/"
         self._inv_url = urljoin(self._base_url, "objects.inv")
         
-        self.strgcls._docs_cache: List[Documentation] = []
+        self.strgcls._docs_cache: List[Documentation]
 
-        self.strgcls._rtfs_commit: Optional[str] = None
+        self.strgcls._rtfs_commit: Optional[str]
         self.strgcls._rtfs_cache: Optional[
             List[
                 TypedDict(
@@ -130,7 +130,7 @@ class DocScraper:
                     },
                 )
             ]
-        ] = {}
+        ]
 
         self._rtfs_repo = (
             "discord.py",
@@ -139,6 +139,16 @@ class DocScraper:
         )
         
         self._setup_logger()
+        
+        if not getattr(self.strgcls, "_docs_cache", None):
+            self.strgcls._docs_cache = []
+            
+        if not getattr(self.strgcls, "_rtfs_cache", None):
+            self.strgcls._rtfs_cache = {}
+            
+        if not getattr(self.strgcls, "_inv", None):
+            self.strgcls._inv = None
+        
         
         if not getattr(self.strgcls, "_rtfm_caching_task", None):
             self.strgcls._rtfm_caching_task = asyncio.create_task(self._build_rtfm_cache())
@@ -151,7 +161,7 @@ class DocScraper:
         
     @property
     def strgcls(self):
-        return self._bot if self._bot.debug else self
+        return self._bot
 
     def _setup_logger(self) -> None:
         if not os.path.isdir("logs/scrapers"):
@@ -250,8 +260,8 @@ class DocScraper:
 
                 self._rtfs_index_file(filepath)
 
-    async def _build_rtfs_cache(self):
-        if self.strgcls._rtfs_cache != {}:
+    async def _build_rtfs_cache(self, recache: bool = False, updater: Callable = None):
+        if self.strgcls._rtfs_cache != {} and not recache:
             return
         
         repo, url, dir_name = self._rtfs_repo
@@ -269,7 +279,7 @@ class DocScraper:
 
         await self._rtfs_index_directory(path)
         
-        self._logger.info("RTFS cache built")
+        await self.log(updater, "RTFS cache built", "rtfs")
 
     async def rtfs_search(
         self,
@@ -436,12 +446,16 @@ class DocScraper:
             results.append(result)
         
         return results
+    
+    async def log(self, updater: Callable, message: str, name: str):
+        await self.update(updater, message, name)
+        self._logger.info(message.replace("`", ""))
         
-    async def _cache_all_documentations(self) -> Dict[str, List[Documentation]]:
-        if self.strgcls._docs_cache != []:
+    async def _cache_all_documentations(self, recache: bool = False, updater: Callable = None) -> Dict[str, List[Documentation]]:
+        if self.strgcls._docs_cache != [] and not recache:
             return
         
-        self._logger.info("Starting documentation caching")
+        await self.log(updater, "Starting documentation caching", "documentation")
         
         @executor()
         def bs4(content: str):
@@ -452,7 +466,8 @@ class DocScraper:
             manual_as = [manual_li.find("a") for manual_li in manual_lis]
             return [(manual.text, self._build_url(manual.get("href"))) for manual in manual_as]
         
-        manuals = await bs4(await self._get_html(self._base_url))
+        content = await self._get_html(self._base_url)
+        manuals = await bs4(content)
         
         results: Dict[str, List[Documentation]] = {}
         for name, manual in manuals:
@@ -469,13 +484,10 @@ class DocScraper:
                 for documentation in documentations:
                     self.strgcls._docs_cache.append(documentation)
                     
-                self._logger.info(f"{name} documentation added to doc cache")
+                await self.log(updater, f"`{name}` documentation added to documentation cache", "documentation")
             
-        if all(name in results.keys() for name, _ in manuals):
-            self._logger.info("Successfully cached all manuals")
-        else:
-            amount = sum(name in results.keys() for name, _ in manuals)
-            self._logger.info(f"Successfully cached {amount}/{len(manuals)} manuals")
+        amount = sum(name in results.keys() for name, _ in manuals)
+        await self.log(updater, f"Successfully cached `{amount}`/`{len(manuals)}` manuals", "documentation")
         
         return results
         
@@ -488,6 +500,10 @@ class DocScraper:
             await asyncio.sleep(1)
 
     async def get_documentation(self, name: str, updater: Callable = None) -> Documentation:
+        if getattr(self.strgcls, "_docs_cache", None) is None and self.strgcls._docs_caching_task.done():
+            await self.update(updater, f"{LOADING} Documentation cache is not yet built, building now.")
+            self.strgcls._docs_caching_task = asyncio.create_task(self._cache_all_documentations())
+        
         result = discord.utils.get(self.strgcls._docs_cache, name=name)
         
         if not result:
@@ -499,24 +515,28 @@ class DocScraper:
             
         return result
     
-    async def _build_rtfm_cache(self):
-        if getattr(self.strgcls, "_inv", None) is not None:
+    async def _build_rtfm_cache(self, recache: bool = False, updater: Callable = None):
+        if getattr(self.strgcls, "_inv", None) is not None and not recache:
             return
         
         partial = functools.partial(Inventory, url=self._inv_url)
         loop = asyncio.get_running_loop()
         self.strgcls._inv = await loop.run_in_executor(None, partial)
         
-        self._logger.info("RTFM cache built")
+        await self.log(updater, "RTFM cache built", "rtfm")
         
-    async def update(self, updater: Callable, message: str):
+    async def update(self, updater: Callable, message: str, name: str = None):
         if updater:
             loop = asyncio.get_running_loop()
             
-            if inspect.iscoroutinefunction(updater):
-                return await updater(message)
+            args = [message]
+            if name and "name" in inspect.signature(updater).parameters.keys():
+                args.append(name)
             
-            partial = functools.partial(updater, message)
+            if inspect.iscoroutinefunction(updater):
+                return await updater(*args)
+            
+            partial = functools.partial(updater, *args)
             return await loop.run_in_executor(None, partial)
 
     async def search(self, query: str, limit: int = None, exclude_std: bool = False, updater: Callable = None) -> SearchResults:
@@ -565,7 +585,4 @@ class DocScraper:
 
 
 async def setup(bot):
-    if cog := bot.get_cog("Documentation"):
-        if (attr := getattr(cog, "scrapers", None)) is not None:
-            attr["discord.py"] = DocScraper(getattr(bot, "bcontext", None), bot)
     pass

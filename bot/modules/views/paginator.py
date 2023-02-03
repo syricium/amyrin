@@ -240,7 +240,7 @@ class EmbedPaginator:
         self.context = ctx
         view = self.new_view(timeout=timeout)
 
-        if kwarg_view := kwargs.pop("view"):
+        if kwarg_view := kwargs.pop("view", None):
             for child in kwarg_view.children:
                 view.add_item(child)
 

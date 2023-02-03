@@ -5,9 +5,12 @@ import humanize
 import jishaku
 import psutil
 from discord.ext import commands
+from importlib.metadata import distribution, packages_distributions
 from jishaku.cog import OPTIONAL_FEATURES, STANDARD_FEATURES
 from jishaku.features.baseclass import Feature
 from jishaku.modules import package_version
+import typing
+from jishaku.math import natural_size
 
 from core.bot import onyx
 
@@ -31,12 +34,26 @@ class Jishaku(*OPTIONAL_FEATURES, *STANDARD_FEATURES):
         All other functionality is within its subcommands.
         """
 
+        # Try to locate what vends the `discord` package
+        distributions: typing.List[str] = [
+            dist for dist in packages_distributions()['discord']  # type: ignore
+            if any(
+                file.parts == ('discord', '__init__.py')  # type: ignore
+                for file in distribution(dist).files  # type: ignore
+            )
+        ]
+
+        if distributions:
+            dist_version = f'{distributions[0]} `{package_version(distributions[0])}`'
+        else:
+            dist_version = f'unknown `{discord.__version__}`'
+
         summary = [
-            f"Jishaku v{package_version('jishaku')}, discord.py `{package_version('discord.py')}`, "
+            f"Jishaku v{package_version('jishaku')}, {dist_version}, "
             f"`Python {sys.version}` on `{sys.platform}`".replace("\n", ""),
             f"Module was loaded <t:{self.load_time.timestamp():.0f}:R>, "
             f"cog was loaded <t:{self.start_time.timestamp():.0f}:R>.",
-            "",
+            ""
         ]
 
         # detect if [procinfo] feature is installed
@@ -47,11 +64,9 @@ class Jishaku(*OPTIONAL_FEATURES, *STANDARD_FEATURES):
                 with proc.oneshot():
                     try:
                         mem = proc.memory_full_info()
-                        summary.append(
-                            f"Using `{humanize.naturalsize(mem.rss)}` physical memory and "
-                            f"`{humanize.naturalsize(mem.vms)}` virtual memory, "
-                            f"`{humanize.naturalsize(mem.uss)}` of which unique to this process."
-                        )
+                        summary.append(f"Using {natural_size(mem.rss)} physical memory and "
+                                       f"{natural_size(mem.vms)} virtual memory, "
+                                       f"{natural_size(mem.uss)} of which unique to this process.")
                     except psutil.AccessDenied:
                         pass
 
@@ -60,10 +75,7 @@ class Jishaku(*OPTIONAL_FEATURES, *STANDARD_FEATURES):
                         pid = proc.pid
                         thread_count = proc.num_threads()
 
-                        summary.append(
-                            f"Running on PID {pid} (`{name}`) with {thread_count} "
-                            f"thread{''.join('s' if thread_count > 1 else '')}."
-                        )
+                        summary.append(f"Running on PID {pid} (`{name}`) with {thread_count} thread(s).")
                     except psutil.AccessDenied:
                         pass
 
@@ -74,63 +86,58 @@ class Jishaku(*OPTIONAL_FEATURES, *STANDARD_FEATURES):
                     "to query process information."
                 )
                 summary.append("")  # blank line
-
-        cache_summary = (
-            f"`{len(self.bot.guilds)}` guild{''.join('s' if len(self.bot.guilds) > 1 else '')} "
-            f"and `{len(self.bot.users)}` user{''.join('s' if len(self.bot.users) > 1 else '')}"
-        )
+        s_for_guilds = "" if len(self.bot.guilds) == 1 else "s"
+        s_for_users = "" if len(self.bot.users) == 1 else "s"
+        cache_summary = f"{len(self.bot.guilds)} guild{s_for_guilds} and {len(self.bot.users)} user{s_for_users}"
 
         # Show shard settings to summary
         if isinstance(self.bot, discord.AutoShardedClient):
             if len(self.bot.shards) > 20:
                 summary.append(
-                    f"This bot is automatically sharded (`{len(self.bot.shards)}` shards of `{self.bot.shard_count}`)"
+                    f"This bot is automatically sharded ({len(self.bot.shards)} shards of {self.bot.shard_count})"
                     f" and can see {cache_summary}."
                 )
             else:
-                shard_ids = ", ".join(str(i) for i in self.bot.shards.keys())
+                shard_ids = ', '.join(str(i) for i in self.bot.shards.keys())
                 summary.append(
-                    f"This bot is automatically sharded (Shards `{shard_ids}` of `{self.bot.shard_count}`)"
+                    f"This bot is automatically sharded (Shards {shard_ids} of {self.bot.shard_count})"
                     f" and can see {cache_summary}."
                 )
         elif self.bot.shard_count:
             summary.append(
-                f"This bot is manually sharded (Shard `{self.bot.shard_id}` of `{self.bot.shard_count}`)"
+                f"This bot is manually sharded (Shard {self.bot.shard_id} of {self.bot.shard_count})"
                 f" and can see {cache_summary}."
             )
         else:
-            summary.append(f"This bot is not sharded and can see `{cache_summary}`.")
+            summary.append(f"This bot is not sharded and can see {cache_summary}.")
 
         # pylint: disable=protected-access
-        if self.bot._connection.max_messages:
-            message_cache = (
-                f"Message cache capped at `{self.bot._connection.max_messages}`"
-            )
+        if self.bot._connection.max_messages:  # type: ignore
+            message_cache = f"Message cache capped at {self.bot._connection.max_messages}"  # type: ignore
         else:
-            message_cache = "Message cache is `disabled`"
+            message_cache = "Message cache is disabled"
 
-        if discord.version_info >= (1, 5, 0):
-            presence_intent = f"presence intent is `{'enabled' if self.bot.intents.presences else 'disabled'}`"
-            members_intent = f"members intent is `{'enabled' if self.bot.intents.members else 'disabled'}`"
+        remarks = {
+            True: 'enabled',
+            False: 'disabled',
+            None: 'unknown'
+        }
 
-            summary.append(f"{message_cache}, {presence_intent}\n{members_intent}.")
-        else:
-            guild_subscriptions = (
-                f"guild subscriptions are "
-                f"`{'enabled' if self.bot._connection.guild_subscriptions else 'disabled'}`"
-            )
+        *group, last = (
+            f"{intent.replace('_', ' ')} intent is {remarks.get(getattr(self.bot.intents, intent, None))}"
+            for intent in
+            ('presences', 'members', 'message_content')
+        )
 
-            summary.append(f"{message_cache} and {guild_subscriptions}.")
+        summary.append(f"{message_cache}, {', '.join(group)}, and {last}.")
 
         # pylint: enable=protected-access
 
         # Show websocket latency in milliseconds
-        summary.append(
-            f"Average websocket latency: `{round(self.bot.latency * 1000, 2)}`ms"
-        )
+        summary.append(f"Average websocket latency: {round(self.bot.latency * 1000, 2)}ms")
 
-        embed = discord.Embed(description="\n".join(summary), color=self.bot.color)
-        embed.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar.url)
+        embed = discord.Embed(description="\n".join(summary), color=ctx.bot.color)
+        embed.set_author(name=ctx.bot.user.name, icon_url=ctx.bot.user.avatar.url)
 
         await ctx.send(embed=embed)
 

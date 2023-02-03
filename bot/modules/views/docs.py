@@ -92,23 +92,22 @@ class DocView(View):
             self._message = await interaction.original_response()
         
     async def _update(self, interaction: discord.Interaction | commands.Context, name: str):
-        print(name)
         update = None
         
         if isinstance(interaction, commands.Context):
-            interaction._message: discord.Message = None
+            self._message: discord.Message = None
             
             async def update(text: str):
-                if interaction._message:
-                    return await interaction._message.edit(content=text)
+                if self._message:
+                    return await self._message.edit(content=text)
                 elif isinstance(interaction, discord.Interaction):
                     if interaction.response.is_done():
                         await interaction.response.send_message(text)
-                        interaction._message = await interaction.original_response()
+                        self._message = await interaction.original_response()
                     else:
-                        interaction._message = await interaction.followup.send(text, wait=True)
+                        self._message = await interaction.followup.send(text, wait=True)
                 elif isinstance(interaction, commands.Context):
-                    interaction._message = await interaction.send(text)
+                    self._message = await interaction.send(text)
             
         docs = await self.scraper.get_documentation(name, updater=update)
                 

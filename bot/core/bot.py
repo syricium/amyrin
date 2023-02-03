@@ -41,6 +41,7 @@ class onyx(commands.Bot):
         )
         self.logger = None  # logging.Logger instance, later defined in self.startup
         self.expr_states = {}  # expr.py states, in use in modules.util.views.calculator
+        self.eval_tasks = {}
 
         self.playwright = None  # playwright instance, later defined in self.setup_hook
         self.browser: Browser = (
