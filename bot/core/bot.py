@@ -60,7 +60,6 @@ class amyrin(commands.Bot):
             0x2F3136  # color used for embeds and whereever else it would be appropiate
         )
         
-        self.pfp_rotation.start()
 
     @tasks.loop(hours=1)
     async def pfp_rotation(self):
@@ -103,9 +102,9 @@ class amyrin(commands.Bot):
 
     async def setup_hook(self) -> None:
         discord.utils.setup_logging()
+        self.pfp_rotation.start()
 
         self.session = aiohttp.ClientSession()
-
         self.playwright = await async_playwright().start()
         self.browser = await self.playwright.chromium.launch()
         self.bcontext = await self.browser.new_context()
