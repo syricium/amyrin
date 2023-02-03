@@ -10,7 +10,7 @@ from typing import Literal, Optional
 import aiohttp
 import discord
 import mystbin
-from discord.ext import commands, ipc
+from discord.ext import commands, ipc, tasks
 from discord.ext.commands import Greedy
 from dotenv import load_dotenv
 from playwright.async_api import async_playwright
@@ -59,6 +59,23 @@ class amyrin(commands.Bot):
         self.color = (
             0x2F3136  # color used for embeds and whereever else it would be appropiate
         )
+        
+        self.pfp_rotation.start()
+
+    @tasks.loop(hours=1)
+    async def pfp_rotation(self):
+        if self.debug:
+            return
+        
+        await self.wait_until_ready()
+        
+        root = os.getcwd()
+        path = os.path.join(root, "pfps")
+        if os.path.isdir(path):
+            for f in os.listdir(path):
+                filepath = os.path.join(path, f)
+                with open(filepath, "rb") as f:
+                    await self.user.edit(avatar=f.read())
 
     def _get_prefix(self, debug: bool = None):
         if debug is None:
