@@ -7,7 +7,7 @@ import humanize
 import psutil
 from discord.ext import commands
 
-from core.bot import onyx
+from core.bot import amyrin
 
 from . import *
 
@@ -15,7 +15,7 @@ from . import *
 class Miscellaneous(commands.Cog):
     def __init__(self, bot):
         super().__init__()
-        self.bot: onyx = bot
+        self.bot: amyrin = bot
 
     @command(description="Get the ping of the bot", examples=["{prefix}ping"])
     async def ping(self, ctx: commands.Context | discord.Interaction):

@@ -1,6 +1,6 @@
 from discord.ext import commands
 
-from core.bot import onyx
+from core.bot import amyrin
 
 from . import *
 
@@ -8,7 +8,7 @@ from . import *
 class Nonsense(commands.Cog):
     def __init__(self, bot):
         super().__init__()
-        self.bot: onyx = bot
+        self.bot: amyrin = bot
 
     @command(
         description="command dedicated to discord user jazz#0001",

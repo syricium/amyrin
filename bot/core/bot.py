@@ -26,9 +26,12 @@ debug = (
 )
 
 
-class onyx(commands.Bot):
+class amyrin(commands.Bot):
     def __init__(self, *args, **kwargs) -> commands.Bot:
-        super().__init__(*args, **kwargs)
+        super().__init__(
+            command_prefix=self._get_prefix(debug),
+            *args, **kwargs
+        )
         self.uptime = datetime.utcnow()
         self.myst = mystbin.Client(token=os.getenv("MYSTBIN_API"))
 
@@ -56,6 +59,17 @@ class onyx(commands.Bot):
         self.color = (
             0x2F3136  # color used for embeds and whereever else it would be appropiate
         )
+
+    def _get_prefix(self, debug: bool = None):
+        if debug is None:
+            debug = self.debug
+            
+        async def get_prefix(bot: commands.Bot = None, message: discord.Message = None) -> str:
+            if debug:
+                return "amyd"
+            return commands.when_mentioned_or(*["amy"])
+        
+        return get_prefix
 
     @property
     def owner(self) -> discord.User:
@@ -216,8 +230,7 @@ class onyx(commands.Bot):
 
 intents = discord.Intents.all()
 
-bot = onyx(
-    command_prefix=commands.when_mentioned if not debug else "onyc",
+bot = amyrin(
     allowed_mentions=discord.AllowedMentions.none(),
     intents=intents,
     strip_after_prefix=True,

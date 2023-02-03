@@ -22,7 +22,7 @@ from sphobjinv import DataObjStr, Inventory
 
 from modules.util.executor import executor
 from modules.util.timer import Timer
-from core.bot import onyx
+from core.bot import amyrin
 from core.constants import *
 
 class Response:
@@ -107,7 +107,7 @@ class SearchResults:
 
 
 class DocScraper:
-    def __init__(self, browser: Optional[Browser] = None, bot: onyx = None):
+    def __init__(self, browser: Optional[Browser] = None, bot: amyrin = None):
         self._logger: logging.Logger = None
         
         self._browser = browser

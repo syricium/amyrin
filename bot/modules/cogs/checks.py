@@ -1,11 +1,11 @@
 from discord.ext import commands
-from core.bot import onyx
+from core.bot import amyrin
 
 
 class Checks(commands.Cog):
     def __init__(self, bot):
         super().__init__()
-        self.bot: onyx = bot
+        self.bot: amyrin = bot
         self.bot.add_check(self.debug_check)
 
     async def debug_check(self, ctx: commands.Context):

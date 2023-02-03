@@ -18,7 +18,7 @@ from jishaku.codeblocks import codeblock_converter
 from jishaku.repl import KeywordTransformer
 
 from typing import AsyncGenerator, Dict
-from core.bot import onyx
+from core.bot import amyrin
 from modules.views.pull import PullView
 from modules.views.paginator import paginate, WrapList
 
@@ -53,7 +53,7 @@ class Updater:
 class Developer(commands.Cog, command_attrs={"hidden": True}):
     def __init__(self, bot):
         super().__init__()
-        self.bot: onyx = bot
+        self.bot: amyrin = bot
         self.module_regex = re.compile(r"bot\/(?P<module>modules\/.+)\.py")
 
     async def shell(self, code: str, wait: bool = True):

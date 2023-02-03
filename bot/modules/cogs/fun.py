@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 
-from core.bot import onyx
+from core.bot import amyrin
 
 from . import *
 import expr
@@ -11,7 +11,7 @@ from modules.views.calculator import CalculatorView, start_calculator
 class Fun(commands.Cog):
     def __init__(self, bot):
         super().__init__()
-        self.bot: onyx = bot
+        self.bot: amyrin = bot
         
         self.expr_states = {}
 

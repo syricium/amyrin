@@ -12,7 +12,7 @@ from jishaku.modules import package_version
 import typing
 from jishaku.math import natural_size
 
-from core.bot import onyx
+from core.bot import amyrin
 
 jishaku.Flags.NO_DM_TRACEBACK = True
 jishaku.Flags.NO_UNDERSCORE = True
@@ -142,5 +142,5 @@ class Jishaku(*OPTIONAL_FEATURES, *STANDARD_FEATURES):
         await ctx.send(embed=embed)
 
 
-async def setup(bot: onyx):
+async def setup(bot: amyrin):
     await bot.add_cog(Jishaku(bot=bot))

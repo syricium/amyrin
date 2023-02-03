@@ -1,10 +1,10 @@
 [Unit]
-Description=onyx web
+Description=amyrin web
 After=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=/home/onyx/onyx/web
+WorkingDirectory=/home/amyrin/amyrin/web
 ExecStart=sh start.sh
 Restart=always
 

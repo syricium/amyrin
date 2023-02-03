@@ -5,7 +5,7 @@ import magic
 from aiohttp import FormData
 from discord.ext import commands
 
-from core.bot import onyx
+from core.bot import amyrin
 from modules.util.converters import FileConverter, URLObject
 from modules.util.executor import executor
 from modules.views.song import SongView
@@ -16,7 +16,7 @@ from . import *
 class Utility(commands.Cog):
     def __init__(self, bot):
         super().__init__()
-        self.bot: onyx = bot
+        self.bot: amyrin = bot
 
     @executor()
     def _detect_content_type(self, buffer: BytesIO):

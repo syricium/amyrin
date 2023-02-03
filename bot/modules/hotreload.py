@@ -4,7 +4,7 @@ import pathlib
 from discord.ext import commands, tasks
 
 import traceback
-from core.bot import onyx
+from core.bot import amyrin
 
 IGNORE_EXTENSIONS = []
 
@@ -18,7 +18,7 @@ class HotReload(commands.Cog):
     Cog for reloading extensions as soon as the file is edited
     """
 
-    def __init__(self, bot: onyx):
+    def __init__(self, bot: amyrin):
         self.bot = bot
         if bot.debug:
             self.hot_reload_loop.start()

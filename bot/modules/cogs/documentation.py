@@ -4,7 +4,7 @@ from typing import Callable, Dict, Literal
 import discord
 from discord.ext import commands
 
-from core.bot import onyx
+from core.bot import amyrin
 from modules.views.docs import DocView
 
 from . import *
@@ -14,7 +14,7 @@ from modules.util.converters import format_list
 class Documentation(commands.Cog):
     def __init__(self, bot):
         super().__init__()
-        self.bot: onyx = bot
+        self.bot: amyrin = bot
         
         self.scrapers = {
             "discord.py": DiscordScraper(self.bot.bcontext, bot)
