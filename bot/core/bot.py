@@ -67,7 +67,7 @@ class amyrin(commands.Bot):
         async def get_prefix(bot: commands.Bot = None, message: discord.Message = None) -> str:
             if debug:
                 return "amyd"
-            return commands.when_mentioned_or(*["amy"])
+            return commands.when_mentioned_or(*["amy"])(bot, message)
         
         return get_prefix
 
