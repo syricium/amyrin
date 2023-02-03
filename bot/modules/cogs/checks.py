@@ -12,7 +12,7 @@ class Checks(commands.Cog):
         if not self.bot.debug:
             return True
         
-        if  await self.bot.is_owner(ctx.author):
+        if not await self.bot.is_owner(ctx.author):
             prefix = await self.bot.get_formatted_prefix(False)
             
             await ctx.reply(
