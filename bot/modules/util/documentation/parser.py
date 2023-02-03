@@ -108,7 +108,7 @@ async def setup(bot: commands.Bot):
     command_prefix = bot.command_prefix
     
     if inspect.isfunction(command_prefix):
-        command_prefix = await command_prefix()
+        command_prefix = await command_prefix(bot)
 
     prefix = (
         command_prefix if command_prefix in string.punctuation else command_prefix + " "
