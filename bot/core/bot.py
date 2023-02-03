@@ -1,4 +1,5 @@
 import importlib
+import inspect
 import logging
 import logging.handlers
 import os
@@ -86,6 +87,17 @@ class amyrin(commands.Bot):
             return commands.when_mentioned_or(*["amy"])(bot, message)
         
         return get_prefix
+    
+    async def get_formatted_prefix(self, debug: bool = None):
+        command_prefix = self._get_prefix(debug=debug)
+        
+        if inspect.isfunction(command_prefix):
+            command_prefix = await command_prefix(bot)
+            
+        if isinstance(command_prefix, list):
+            command_prefix = command_prefix[-1]
+            
+        return command_prefix
 
     @property
     def owner(self) -> discord.User:

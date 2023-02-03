@@ -105,13 +105,7 @@ class DocParser:
 
 
 async def setup(bot: commands.Bot):
-    command_prefix = bot.command_prefix
-    
-    if inspect.isfunction(command_prefix):
-        command_prefix = await command_prefix(bot)
-        
-    if isinstance(command_prefix, list):
-        command_prefix = command_prefix[0]
+    command_prefix = await bot.get_formatted_prefix()
 
     prefix = (
         command_prefix if command_prefix in string.punctuation else command_prefix + " "

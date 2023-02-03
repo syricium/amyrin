@@ -12,10 +12,12 @@ class Checks(commands.Cog):
         if not self.bot.debug:
             return True
         
-        if not await self.bot.is_owner(ctx.author):
+        if  await self.bot.is_owner(ctx.author):
+            prefix = await self.bot.get_formatted_prefix(False)
+            
             await ctx.reply(
                 "You are trying to use the debug version of the bot, which only my owner can, "
-                f"the prefix of the stable version is {self.bot.user.mention} (ex: {self.bot.user.mention} help)"
+                f"the prefix of the stable version is {prefix} (ex: {prefix} help)"
             )
             return False
         elif ctx.interaction:
