@@ -142,7 +142,7 @@ class _HelpCommand(commands.HelpCommand):
             em.add_field(
                 name="Parameters",
                 value="\n".join(
-                    f"{parameter.name} ({format_list(parameter.types, brackets='`')}): {parameter.description}"
+                    f"{parameter.name} ({parameter.type}): {parameter.description}"
                     for parameter in documentation.parameters
                 ),
                 inline=False,
@@ -296,7 +296,7 @@ class _HelpCommand(commands.HelpCommand):
             em.add_field(
                 name="Parameters",
                 value="\n".join(
-                    f"{parameter.name} ({format_list(parameter.types, brackets='`')}): {parameter.description}"
+                    f"{parameter.name} ({parameter.type}): {parameter.description}"
                     for parameter in documentation.parameters
                 ),
                 inline=False,

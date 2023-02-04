@@ -14,7 +14,7 @@ root = os.path.dirname(os.path.realpath(__file__))
 @dataclass(unsafe_hash=True, frozen=True)
 class Parameter:
     name: str
-    types: List[Any]
+    type: Any
     visual_name: str
     description: str
 
@@ -65,19 +65,14 @@ class DocParser:
     def _get_parameters(
         self, parameters: Dict[str, CommandsParameter]
     ) -> List[Parameter]:
-        param_type_mapping = {str: "text", int: "number"}
-
         params = []
         for name, param in parameters.items():
-            types = [param.annotation.__name__]
-            if type := param_type_mapping.get(param.annotation):
-                types.append(type)
-
+            type = param.annotation.__name__
             visual_name = f"<{name}>" if param.required else f"[{name}]"
             params.append(
                 Parameter(
                     name=name,
-                    types=types,
+                    type=type,
                     visual_name=visual_name,
                     description=param.description,
                 )

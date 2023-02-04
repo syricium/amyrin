@@ -32,6 +32,10 @@ class Utility(commands.Cog):
     def _detect_content_type(self, buffer: BytesIO):
         return magic.from_buffer(buffer)
     
+    @executor
+    def classify_nudity(self, path: os.PathLike) -> float:
+        ...
+    
     def _format_ud_hyperlink(self, term: str):
         formatted_term = quote_plus(term)
         return URBAN_DICTIONARY_URL.format(formatted_term)

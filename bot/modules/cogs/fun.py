@@ -49,7 +49,7 @@ class Fun(commands.Cog):
             em.add_field(name="Error", value=f"```py\n{str(error)}```", inline=False)
         else:
             if res is None:
-                return await ctx.message.add_reaction(self.bot.icons.checkmark)
+                return await ctx.message.add_reaction("\N{WHITE HEAVY CHECK MARK}")
             em.add_field(
                 name="Input", value=f"```mathematica\n{expression}```", inline=False
             )
