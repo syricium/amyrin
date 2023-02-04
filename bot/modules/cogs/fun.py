@@ -18,7 +18,7 @@ class Fun(commands.Cog):
     @command(
         description="Open calculator or calculate given expression",
         examples=["{prefix}calculator", "{prefix}calculate 1+1", "{prefix}calc 861/95"],
-        aliases=["calc", "calculate"],
+        aliases=["calc", "calculate", "math"],
     )
     async def calculator(
         self,
