@@ -1,15 +1,17 @@
 import importlib
 import inspect
+import json
 import logging
 import logging.handlers
 import os
 import traceback
 from datetime import datetime
 from textwrap import indent
-from typing import Literal, Optional
+from typing import Callable, Literal, Optional
 
 import aiohttp
 import discord
+import humanfriendly
 import mystbin
 from discord.ext import commands, ipc, tasks
 from discord.ext.commands import Greedy
@@ -190,9 +192,41 @@ class amyrin(commands.Bot):
                 else:
                     text = f"├─ {k}: {v}"
                 self.logger.info(indent(text, "  "))
+                
+        with open("restart.json", "r") as f:
+            data = json.load(f)
+            if not data:
+                return
+            
+            guild = data.get("guild")
+            channel = data.get("channel")
+            message = data.get("message")
+            time = datetime.utcnow().timestamp()-data.get("time")
+                
+            if not (guild or channel or message or time):
+                return
+            
+            try:
+                guild: discord.Guild = self.get_guild(guild)
+                channel: discord.TextChannel = guild.get_channel(channel)
+                message = await channel.fetch_message(message)
+            except AttributeError:
+                return
 
-    async def close(self) -> None:
+            took = humanfriendly.format_timespan(time)
+            await message.reply(f"Restart took {took}")
+            with open("restart.json", "w") as w:
+                w.write("{}")
+                w.close()
+            f.close()
+
+    async def close(self, updater: Callable = None) -> None:
         tasks = {"bot": super().close, "session": self.session.close}
+
+        async def log(message: str, attr: str = None):
+            if updater:
+                await updater(message)
+            getattr(self.logger, attr or "log")(message)
 
         for task, func in tasks.items():
             try:
@@ -202,7 +236,7 @@ class amyrin(commands.Bot):
                     traceback.format_exception(type(exc), exc, exc.__traceback__)
                 )
 
-                self.logger.error(f"Error occured closing {task} ({func}):\n{exc}")
+                await log(f"Error occured closing {task} ({func}):\n{exc}", "error")
 
         await super().close()
 

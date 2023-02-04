@@ -3,6 +3,7 @@ import asyncio
 from copy import copy
 from datetime import datetime
 import inspect
+import json
 import os
 import random
 import re
@@ -288,8 +289,9 @@ class Developer(commands.Cog, command_attrs={"hidden": True}):
     )
     @commands.is_owner()
     async def _as(self, ctx, user: discord.Member, *, command: str):
+        prefix = await self.bot.get_formatted_prefix()
         msg = copy(ctx.message)
-        msg.content = f"{self.bot.command_prefix}{command}"
+        msg.content = f"{prefix}{command}"
         msg.author = user
         await self.bot.process_commands(msg)
 
@@ -317,6 +319,35 @@ class Developer(commands.Cog, command_attrs={"hidden": True}):
 
         embed = discord.Embed(description=description, color=self.bot.color)
         await ctx.send(embed=embed, view=PullView(ctx, modules=modules))
+        
+    @command(
+        commands.command,
+        aliases=["rs"],
+        examples=["{prefix}restart"],
+        permissions=CommandPermissions(template=PermissionTemplates.text_command),
+    )
+    @commands.is_owner()
+    async def restart(self, ctx: commands.Context):
+        with open("restart.json", "w") as f:
+            data = {
+                "guild": ctx.guild.id,
+                "channel": ctx.channel.id,
+                "message": ctx.message.id,
+                "time": datetime.utcnow().timestamp()
+            }
+            f.write(json.dumps(data, indent=4))
+            f.close()
+        
+        ctx._message: discord.Message = None
+        async def updater(message: str):
+            if self._message:
+                content = ctx._message.content
+                content += "\n" + message
+                ctx._message = await ctx._message.edit(content=content)
+            else:
+                ctx._message = await ctx.send(message)
+        
+        await self.bot.close(updater)
 
 
 async def setup(bot):

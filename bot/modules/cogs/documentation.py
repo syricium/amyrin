@@ -56,7 +56,10 @@ class Documentation(commands.Cog):
                                 pass
                         break
                     else:
-                        print(reaction.emoji == reactions[0])
+                        if reaction.emoji == reactions[0]:
+                            return True
+                        return False
+                return False
             
             scraper = self.scrapers["discord.py"]
         
@@ -67,18 +70,53 @@ class Documentation(commands.Cog):
             }
             
             if command is None:
-                running = [name for name, (func, task) in cache_map.items() if not task.done()]
+                items = [x for x in cache_map.items() if not task.done()]
+                running = [name for name, (func, task) in items]
                 if len(running) == 1:
-                    await task_running(f"There {running[0]} startup caching task is not yet done, do you want to cancel it?")
+                    out = await task_running(f"There {running[0]} startup caching task is not yet done, do you want to cancel it?")
                 elif running:
                     all_running = format_list(running, seperator="and", brackets="`")
-                    await task_running(f"The {all_running} startup caching tasks are not yet done, do you want to cancel it?")
+                    out = await task_running(f"The {all_running} startup caching tasks are not yet done, do you want to cancel it?")
+                  
+                if out:
+                    results: Dict[str, Optional[Exception]] = {}
+                    
+                    for name, (func, task) in items:
+                        try:
+                            task.cancel()
+                        except Exception as exc:
+                            error = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+                            results[name] = error
+                        else:
+                            results[name] = None
+                        
+                    description = "\n".join(
+                        f"\N{WHITE HEAVY CHECK MARK} {name}"
+                        if not error else
+                        f"\N{WHITE HEAVY CHECK MARK} {name}\n```py\n{error}\n```"
+                    )
+                    embed = discord.Embed(description=description, color=self.bot.color)
+                    await ctx.send(embed=embed)
+                    return False
+                    
+                
             
             func, task = cache_map[command]
             task: asyncio.Task
             
             if not task.done():
-                await task_running(f"The {command} startup caching task is not yet done, do you want to cancel it?")
+                out = await task_running(f"The {command} startup caching task is not yet done, do you want to cancel it?")
+                if out:
+                    try:
+                        task.cancel()
+                    except Exception as exc:
+                        error = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+                        await ctx.send(f"Failed to cancel task:\n```py\n{error}\n```")
+                        return False
+                    else:
+                        await ctx.send("Successfully cancelled task")
+                
+            
             
             return True
         
@@ -277,9 +315,7 @@ class Documentation(commands.Cog):
         
         scraper = self.scrapers["discord.py"]
 
-        global message
         ctx._message: discord.Message = None
-
         async def update(text: str):
             if ctx._message:
                 return await ctx._message.edit(content=text)
