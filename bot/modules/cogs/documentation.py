@@ -1,4 +1,5 @@
 import asyncio
+import importlib
 import traceback
 from typing import Callable, Dict, Literal
 
@@ -153,6 +154,36 @@ class Documentation(commands.Cog):
             return self._message
 
         return updater
+    
+    @command(
+        commands.command,
+        name="update-scraper",
+        aliases=["us", "update-scrapers"],
+        description="Update all or the given scraper(s)",
+        examples=["{prefix}u"],
+        hidden=True,
+    )
+    @commands.is_owner()
+    async def update_scraper(self, ctx: commands.Context, scraper: str = None):
+        scraper_prefix = "modules.util.scraping.documentation."
+        scrapers = [
+            "discord_py"
+        ]
+        
+        def update_scraper(name: str):
+            imp = importlib.import_module(scraper_prefix + name)
+            class_ = getattr(imp, "DocScraper")
+            self.scrapers[scraper] = class_
+        
+        if not scraper:
+            for scraper in scrapers:
+                update_scraper(scraper)
+                
+            return await ctx.send("Updated all scrapers")
+        
+        scraper = self.scrapers[scraper]
+        update_scraper(scraper)
+        await ctx.send(f"Updated {scraper} documentation scraper")
 
     @command(
         commands.group,
@@ -160,7 +191,6 @@ class Documentation(commands.Cog):
         description="Recache cached items",
         examples=["{prefix}recache"],
         hidden=True,
-        invoke_without_command=True,
     )
     @commands.is_owner()
     async def recache(self, ctx: commands.Context):

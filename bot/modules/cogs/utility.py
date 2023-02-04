@@ -16,6 +16,7 @@ from modules.views.song import SongView
 from urllib.parse import quote_plus
 from modules.views.paginator import paginate
 
+import config #type: ignore
 from . import *
 
 URBAN_DICTIONARY_HYPERLINK_REGEX = r"\[([^\]]+)\]"
@@ -148,7 +149,7 @@ class Utility(commands.Cog):
                 "file", buffer, content_type=content_type, filename=file.filename
             )
 
-            MS_KEY = os.getenv("MEDIASERVER_KEY")
+            MS_KEY = config.MEDIASERVER_KEY
             async with await self.bot.session.post(
                 "https://ms.syrice.pink/upload",
                 data=form,

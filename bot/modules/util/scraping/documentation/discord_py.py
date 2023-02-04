@@ -54,6 +54,10 @@ class RTFSResults:
 
         return embed
 
+@dataclass(frozen=True)
+class Attribute:
+    name: str
+    url: str
 
 @dataclass(frozen=True)
 class Documentation:
@@ -63,6 +67,7 @@ class Documentation:
     examples: List[str]
     url: str
     fields: Dict[str, List[str]]
+    attributes: List[Attribute]
 
     def to_json(self):
         return {
@@ -123,6 +128,7 @@ class DocScraper:
         self._inv_url = urljoin(self._base_url, "objects.inv")
 
         self.strgcls._docs_cache: List[Documentation]
+        self.strgcls._docs_caching_progress: Dict[str, Exception]
 
         self.strgcls._rtfs_commit: Optional[str]
         self.strgcls._rtfs_cache: Optional[
@@ -140,11 +146,14 @@ class DocScraper:
 
         self._rtfs_repo = (
             "discord.py",
-            "https://dpy.gh.0a3.cc",
+            "https://dpy.gh.0a3.cc/tree/master",
             "discord",
         )
 
         self._setup_logger()
+        
+        if not getattr(self.strgcls, "_docs_caching_progress", None):
+            self.strgcls._docs_caching_progress = {}
 
         if not getattr(self.strgcls, "_docs_cache", None):
             self.strgcls._docs_cache = []
@@ -346,7 +355,7 @@ class DocScraper:
         return self._base_url + partial_url
 
     def _get_text(
-        self, element: Tag, parsed_url: ParseResult, template: str = "[{}]({})"
+        self, element: Tag, parsed_url: ParseResult, template: str = "[`{}`]({})"
     ):
         if isinstance(element, Tag) and element.name == "a":
             tag_name = element.text
@@ -359,6 +368,8 @@ class DocScraper:
                     tag_href = urljoin(raw_url, tag_href)
 
             text = template.format(tag_name, tag_href)
+        elif isinstance(element, Tag) and element.name == "strong":
+            text = f"**{element.text}**"
         else:
             text = element.text
 
@@ -367,13 +378,38 @@ class DocScraper:
     @executor()
     def _get_documentation(self, element: Tag, page_url: str) -> Documentation:
         url = element.find("a", class_="headerlink").get("href", None)
-        parsed_url = urlparse(urljoin(page_url, url))
+        full_url = urljoin(page_url, url)
+        parsed_url = urlparse(full_url)
 
+        parent = element.parent
+        
         full_name = element.text
         name = element.attrs.get("id")
-        documentation = element.parent.find("dd")
+        documentation = parent.find("dd")
         description = []
         examples = []
+        
+        def format_attributes(item: Tag) -> List[Attribute]:
+            results: set[str, str] = []
+            items = item.find_all("li", class_="py-attribute-table-entry")
+            for item in items:
+                name = " ".join(x.text for x in item.contents).strip()
+                href = item.find("a") \
+                    .get("href")
+                url = urljoin(full_url, href)
+                results.append((name, url))
+            
+            return results
+                    
+        attributes: Dict[str, List[Attribute]] = {}
+        attribute_list = parent.find("div", class_="py-attribute-table")
+        if attribute_list:
+            items = attribute_list.findChildren("div", class_="py-attribute-table-column")
+            if items:
+                attributes["attributes"] = format_attributes(items[0])
+                if len(items) >= 2:
+                    attributes["methods"] = format_attributes(items[1])
+
 
         field_list = documentation.find("dl", class_="field-list", recursive=False)
         fields = {}
@@ -391,10 +427,10 @@ class DocScraper:
                     texts = []
                     for element in value.contents:
                         text = self._get_text(
-                            element, parsed_url, template="[`{}`]({})"
+                            element, parsed_url
                         )
 
-                        texts.append(text)
+                        texts.append(text.replace("\n", " "))
 
                     elements.append(texts)
 
@@ -416,7 +452,7 @@ class DocScraper:
 
             description.append("".join(elements))
 
-        for child in documentation.find_all("div", class_="highlight"):
+        for child in documentation.find_all("div", class_=["highlight-python3", "highlight-default"], recursive=False):
             examples.append(child.find("pre").text)
 
         if version_modified := documentation.find("span", class_="versionmodified"):
@@ -435,6 +471,7 @@ class DocScraper:
             examples=examples,
             url=url,
             fields=fields,
+            attributes=attributes
         )
 
     async def _get_all_manual_documentations(self, url: str) -> List[Documentation]:
@@ -468,7 +505,7 @@ class DocScraper:
         await self.log(updater, "Starting documentation caching", "documentation")
 
         @executor()
-        def bs4(content: str):
+        def bs4(content: str) -> List[set[str, str]]:
             soup = BeautifulSoup(content, "lxml")
 
             manual_section = soup.find("section", id="manuals")
@@ -481,6 +518,9 @@ class DocScraper:
 
         content = await self._get_html(self._base_url)
         manuals = await bs4(content)
+        
+        for name, _ in manuals:
+            self.strgcls._docs_caching_progress[name] = None
 
         results: Dict[str, List[Documentation]] = {}
         for name, manual in manuals:
@@ -493,6 +533,7 @@ class DocScraper:
                 self._logger.error(
                     f'Error occured while trying to cache "{name}":\n{error}'
                 )
+                self.strgcls._docs_caching_progress[name] = error
             else:
                 if name not in results.keys():
                     results[name] = []
@@ -516,12 +557,39 @@ class DocScraper:
 
         return results
 
-    async def _wait_for_docs(self, name: str):
+    async def _wait_for_docs(self, name: str, updater: Callable = None):
+        msg = await self.update(updater, f"{LOADING} Waiting for caching task, processing command once it's done.")
         while True:
             if self.strgcls._docs_caching_task.cancelled():
+                await self.update(updater, f"Documentation caching task has been cancelled, aborting.")
                 return False
-            if elem := discord.utils.get(self.strgcls._docs_cache, name=name):
+            elif elem := discord.utils.get(self.strgcls._docs_cache, name=name):
+                try:
+                    await msg.delete()
+                except Exception:
+                    pass
                 return elem
+            elif any(error for _, error in self.strgcls._docs_caching_progress.items()):
+                crashed = [name for name, error in self.strgcls._docs_caching_progress.items() if error]
+                if len(crashed) == 1:
+                    name = crashed[0]
+                    await self.update(
+                        updater,
+                        f"Element could not be found, this could be due to the {name} manual "
+                        "caching task having crashed."
+                    )
+                else:
+                    amount = len(crashed)
+                    total_amount = len(self.strgcls._docs_caching_progress.keys())
+                    await self.update(
+                        updater,
+                        f"Element could not be found, this could be due to {amount}/{total_amount} manual "
+                        "caching tasks having crashed."
+                    )
+                return False
+            elif self.strgcls._docs_caching_task.done():
+                await self.update(updater, "Element could not be found")
+                return False
             await asyncio.sleep(1)
 
     async def get_documentation(
@@ -542,11 +610,7 @@ class DocScraper:
         result = discord.utils.get(self.strgcls._docs_cache, name=name)
 
         if not result:
-            await self.update(
-                updater,
-                f"{LOADING} Waiting for caching task, processing command once it's done.",
-            )
-            result = await self._wait_for_docs(name)
+            result = await self._wait_for_docs(name, updater)
 
         if result is False:
             return

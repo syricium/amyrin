@@ -9,3 +9,5 @@ web/static/css/output.css
 web/logs
 bot/.vscode/launch.json
 bot/rtfs_repos/
+bot/restart.json
+bot/config.py

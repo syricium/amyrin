@@ -1,7 +1,7 @@
 from discord.ext import commands
 
 from core.bot import amyrin
-
+import config #type: ignore
 
 class Checks(commands.Cog):
     def __init__(self, bot):
@@ -13,7 +13,8 @@ class Checks(commands.Cog):
         if not self.bot.debug:
             return True
 
-        """if not await self.bot.is_owner(ctx.author):
+        if not await self.bot.is_owner(ctx.author) and ctx.author.id not in config.ALLOWED_ON_DEBUG:
+            print(ctx.author.id)
             prefix = await self.bot.get_formatted_prefix(False)
 
             await ctx.reply(
@@ -22,7 +23,7 @@ class Checks(commands.Cog):
             )
             return False
         elif ctx.interaction:
-            return False"""
+            return False
 
         return True
 

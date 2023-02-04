@@ -15,30 +15,23 @@ import humanfriendly
 import mystbin
 from discord.ext import commands, ipc, tasks
 from discord.ext.commands import Greedy
-from dotenv import load_dotenv
 from playwright.async_api import async_playwright
 from playwright.async_api._generated import Browser
 
+import config #type: ignore
 from core.context import Context
 from modules.util.documentation.parser import DocParser
 
-load_dotenv()
-
-debug = (
-    True if not os.getenv("DEBUG") else False if os.getenv("DEBUG") == "false" else True
-)
-
-
 class amyrin(commands.Bot):
     def __init__(self, *args, **kwargs) -> commands.Bot:
-        super().__init__(command_prefix=self._get_prefix(debug), *args, **kwargs)
+        super().__init__(command_prefix=self._get_prefix(), *args, **kwargs)
         self.uptime = datetime.utcnow()
-        self.myst = mystbin.Client(token=os.getenv("MYSTBIN_API"))
+        self.myst = mystbin.Client(token=config.MYSTBIN_API)
 
-        self.debug = debug
+        self.debug = config.DEBUG
 
-        self.owner_id = 424548154403323934
-        self.owner_ids = (424548154403323934,)
+        self.owner_id = config.OWNERS[0]
+        self.owner_ids = config.OWNERS
         self.session = (
             None  # aiohttp.ClientSession instance, later defined in self.setup_hook
         )
@@ -53,7 +46,7 @@ class amyrin(commands.Bot):
         self.docparser: DocParser = None  # DocParser instance, later defined in modules.util.documentation.parser
 
         self.ipc = ipc.Server(
-            self, host="0.0.0.0", secret_key=os.getenv("IPC_SECRET_KEY")
+            self, host="0.0.0.0", secret_key=config.IPC_SECRET_KEY
         )
 
         self.color = (
@@ -62,7 +55,7 @@ class amyrin(commands.Bot):
 
     @tasks.loop(hours=3)
     async def pfp_rotation(self):
-        if self.debug:
+        if config.DEBUG:
             return
 
         await self.wait_until_ready()
@@ -80,7 +73,7 @@ class amyrin(commands.Bot):
 
     def _get_prefix(self, debug: bool = None):
         if debug is None:
-            debug = self.debug
+            debug = config.DEBUG
 
         async def get_prefix(bot: commands.Bot, message: discord.Message = None) -> str:
             if debug:
@@ -259,7 +252,7 @@ class amyrin(commands.Bot):
 
     def setup_bot_logger(self) -> None:
         logger = logging.getLogger(__name__)
-        logger.setLevel(logging.DEBUG if self.debug else logging.INFO)
+        logger.setLevel(logging.DEBUG if config.DEBUG else logging.INFO)
 
         handler = logging.handlers.RotatingFileHandler(
             filename="logs/bot.log",
@@ -283,10 +276,7 @@ class amyrin(commands.Bot):
     def startup(self) -> None:
         self.setup_loggers()
 
-        token_key = "DISCORD_TOKEN"
-        token = os.getenv(token_key)
-
-        return self.run(token, log_handler=None)
+        return self.run(config.TOKEN, log_handler=None)
 
 
 intents = discord.Intents.all()

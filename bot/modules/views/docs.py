@@ -113,7 +113,7 @@ class DocView(View):
 
             async def update(text: str):
                 if self._message:
-                    return await self._message.edit(content=text)
+                    await self._message.edit(content=text)
                 elif isinstance(interaction, discord.Interaction):
                     if interaction.response.is_done():
                         await interaction.response.send_message(text)
@@ -122,14 +122,22 @@ class DocView(View):
                         self._message = await interaction.followup.send(text, wait=True)
                 elif isinstance(interaction, commands.Context):
                     self._message = await interaction.send(text)
+                    
+                return self._message
 
         docs = await self.scraper.get_documentation(name, updater=update)
 
-        button: discord.ui.Button = discord.utils.get(
+        examples_button: discord.ui.Button = discord.utils.get(
             self.children, custom_id="show_ex"
         )
-        if button:
-            button.disabled = not bool(docs.examples)
+        if examples_button:
+            examples_button.disabled = not bool(docs.examples)
+            
+        attributes_button: discord.ui.Button = discord.utils.get(
+            self.children, custom_id="show_attr"
+        )
+        if attributes_button:
+            attributes_button.disabled = not bool(docs.attributes)
 
         self._current = docs
 
@@ -139,6 +147,42 @@ class DocView(View):
             return await interaction._message.edit(content=None, embed=embed, view=self)
         else:
             return await self._send(interaction, embed=embed, view=self)
+    
+    async def show_attributes(self, interaction: discord.Interaction) -> None:
+        if not self._current:
+            return await interaction.response.send_message(
+                "Current variable is somehow empty, so attributes aren't loaded",
+                ephemeral=True,
+            )
+
+        if not self._current.attributes:
+            return await interaction.response.send_message(
+                "There are no attributes available for this option, "
+                "please report this to my developer if there are.",
+                ephemeral=True,
+            )
+
+        embed = discord.Embed(color=self._color)
+        
+        def format_attribute(name: str, url: str):
+            return f"[{name}]({url})"
+        
+        for name, attributes in self._current.attributes.items():
+            new_attributes = []
+            for attribute in attributes:
+                new_attribute = new_attributes + [f"> {format_attribute(*attribute)}"]
+                
+                
+                if len("\n".join(new_attribute)) > 1024:
+                    break
+                
+                new_attributes = new_attribute
+                
+            embed.add_field(
+                name=name.title(),
+                value="\n".join(new_attributes)
+            )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     async def show_examples(self, interaction: discord.Interaction) -> None:
         if not self._current:
@@ -172,12 +216,20 @@ class DocView(View):
             await self._send(ctx, content="No results found")
 
         select = DocSelect(self, results)
-        button = discord.ui.Button(
+        
+        example_button = discord.ui.Button(
             label="Show Examples", custom_id="show_ex", style=discord.ButtonStyle.grey
         )
-        button.callback = self.show_examples
+        example_button.callback = self.show_examples
+        
+        attributes_button = discord.ui.Button(
+            label="Show Attributes", custom_id="show_attr", style=discord.ButtonStyle.grey
+        )
+        attributes_button.callback = self.show_attributes
+        
         self.add_item(select)
-        self.add_item(button)
+        self.add_item(example_button)
+        self.add_item(attributes_button)
 
         await self._update(ctx, results.results[0][1])
 
