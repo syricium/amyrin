@@ -75,7 +75,10 @@ class amyrin(commands.Bot):
             for f in os.listdir(path):
                 filepath = os.path.join(path, f)
                 with open(filepath, "rb") as f:
-                    await self.user.edit(avatar=f.read())
+                    try:
+                        await self.user.edit(avatar=f.read())
+                    except discord.HTTPException:
+                        pass
 
     def _get_prefix(self, debug: bool = None):
         if debug is None:
