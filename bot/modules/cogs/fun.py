@@ -55,10 +55,6 @@ class Fun(commands.Cog):
             )
             em.add_field(name="Output", value=f"```mathematica\n{res}```", inline=False)
 
-        em.set_thumbnail(
-            url="https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/"
-            "Calculator_Flat_Icon_Vector.svg/512px-Calculator_Flat_Icon_Vector.svg.png"
-        )
         await ctx.send(embed=em)
 
 
