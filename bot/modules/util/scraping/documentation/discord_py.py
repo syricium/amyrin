@@ -6,8 +6,8 @@ import json
 import logging
 import os
 import re
-from dataclasses import dataclass
 import traceback
+from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, TypedDict
 from urllib.parse import ParseResult, urljoin, urlparse
 
@@ -15,15 +15,15 @@ import discord
 from bs4 import BeautifulSoup, SoupStrainer, Tag
 from fuzzywuzzy import fuzz
 from humanfriendly import format_timespan
-import humanfriendly
 from playwright._impl._api_types import TimeoutError as PlaywrightTimeoutError
 from playwright.async_api._generated import Browser
 from sphobjinv import DataObjStr, Inventory
 
-from modules.util.executor import executor
-from modules.util.timer import Timer
 from core.bot import amyrin
 from core.constants import *
+from modules.util.executor import executor
+from modules.util.timer import Timer
+
 
 class Response:
     def __bool__(self):
@@ -63,9 +63,13 @@ class Documentation:
     examples: List[str]
     url: str
     fields: Dict[str, List[str]]
-    
+
     def to_json(self):
-        return {v: getattr(self, v) for v in dir(self) if not v.startswith("_") and v != "to_json"}
+        return {
+            v: getattr(self, v)
+            for v in dir(self)
+            if not v.startswith("_") and v != "to_json"
+        }
 
     def to_embed(self, color: Optional[int] = None):
         description = f"```py\n{self.full_name}\n```\n{self.description}".strip()
@@ -81,7 +85,7 @@ class Documentation:
         field_limit = 1024
         for name, field in self.fields.items():
             if len(field) > field_limit:
-                field = field[:field_limit-3]+"..."
+                field = field[: field_limit - 3] + "..."
             embed.add_field(name=name, value=field, inline=False)
 
         return embed
@@ -96,7 +100,9 @@ class SearchResults:
         return self.results
 
     def to_embed(self, color: Optional[int] = None):
-        description = "\n".join(f"[`{name}`]({url})" for name, _, url, _ in self.results)
+        description = "\n".join(
+            f"[`{name}`]({url})" for name, _, url, _ in self.results
+        )
 
         embed = discord.Embed(description=description, color=color)
 
@@ -109,13 +115,13 @@ class SearchResults:
 class DocScraper:
     def __init__(self, browser: Optional[Browser] = None, bot: amyrin = None):
         self._logger: logging.Logger = None
-        
+
         self._browser = browser
         self._bot = bot
 
         self._base_url = "https://dpy.rtd.0a3.cc/"
         self._inv_url = urljoin(self._base_url, "objects.inv")
-        
+
         self.strgcls._docs_cache: List[Documentation]
 
         self.strgcls._rtfs_commit: Optional[str]
@@ -134,31 +140,36 @@ class DocScraper:
 
         self._rtfs_repo = (
             "discord.py",
-            "https://github.com/Rapptz/discord.py",
+            "https://dpy.gh.0a3.cc",
             "discord",
         )
-        
+
         self._setup_logger()
-        
+
         if not getattr(self.strgcls, "_docs_cache", None):
             self.strgcls._docs_cache = []
-            
+
         if not getattr(self.strgcls, "_rtfs_cache", None):
             self.strgcls._rtfs_cache = {}
-            
+
         if not getattr(self.strgcls, "_inv", None):
             self.strgcls._inv = None
-        
-        
+
         if not getattr(self.strgcls, "_rtfm_caching_task", None):
-            self.strgcls._rtfm_caching_task = asyncio.create_task(self._build_rtfm_cache())
-            
+            self.strgcls._rtfm_caching_task = asyncio.create_task(
+                self._build_rtfm_cache()
+            )
+
         if not getattr(self.strgcls, "_rtfs_caching_task", None):
-            self.strgcls._rtfs_caching_task = asyncio.create_task(self._build_rtfs_cache())
-            
+            self.strgcls._rtfs_caching_task = asyncio.create_task(
+                self._build_rtfs_cache()
+            )
+
         if not getattr(self.strgcls, "_docs_caching_task", None):
-            self.strgcls._docs_caching_task = asyncio.create_task(self._cache_all_documentations())
-        
+            self.strgcls._docs_caching_task = asyncio.create_task(
+                self._cache_all_documentations()
+            )
+
     @property
     def strgcls(self):
         return self._bot
@@ -166,7 +177,7 @@ class DocScraper:
     def _setup_logger(self) -> None:
         if not os.path.isdir("logs/scrapers"):
             os.mkdir("logs/scrapers")
-        
+
         logger = logging.getLogger(__name__)
         logger.setLevel(logging.INFO)
 
@@ -263,14 +274,14 @@ class DocScraper:
     async def _build_rtfs_cache(self, recache: bool = False, updater: Callable = None):
         if self.strgcls._rtfs_cache != {} and not recache:
             return
-        
+
         repo, url, dir_name = self._rtfs_repo
 
         rtfs_repos = os.path.join(os.getcwd(), "rtfs_repos")
         rtfs_repo = os.path.join(rtfs_repos, repo)
         path = os.path.join(rtfs_repo, dir_name)
         commit_path = os.path.join(rtfs_repo, ".git/refs/heads/master")
-        
+
         with open(commit_path) as f:
             self.strgcls._rtfs_commit = f.readline().strip()
 
@@ -278,7 +289,7 @@ class DocScraper:
             await self._shell(f"git clone {url} {rtfs_repo}")
 
         await self._rtfs_index_directory(path)
-        
+
         await self.log(updater, "RTFS cache built", "rtfs")
 
     async def rtfs_search(
@@ -314,9 +325,7 @@ class DocScraper:
 
         return RTFSResults(matches)
 
-    async def _get_html(
-        self, url: str, timeout: int = 0, wait: bool = True
-    ) -> str:
+    async def _get_html(self, url: str, timeout: int = 0, wait: bool = True) -> str:
         page = await self._browser.new_page()
 
         await page.goto(url)
@@ -353,13 +362,12 @@ class DocScraper:
             text = element.text
 
         return text
-    
+
     @executor()
     def _get_documentation(self, element: Tag, page_url: str) -> Documentation:
-        url = element.find("a", class_="headerlink") \
-            .get("href", None)
+        url = element.find("a", class_="headerlink").get("href", None)
         parsed_url = urlparse(urljoin(page_url, url))
-        
+
         full_name = element.text
         name = element.attrs.get("id")
         documentation = element.parent.find("dd")
@@ -371,22 +379,23 @@ class DocScraper:
         if field_list:
             for field in field_list.findChildren("dt"):
                 field: Tag = field
-                
+
                 key = field.text
-                values: List[Tag] = [x for x in field.next_siblings if isinstance(x, Tag)][
-                    0
-                ].find_all("p")
+                values: List[Tag] = [
+                    x for x in field.next_siblings if isinstance(x, Tag)
+                ][0].find_all("p")
 
                 elements: List[List[str]] = []
                 for value in values:
                     texts = []
                     for element in value.contents:
-                        text = self._get_text(element, parsed_url, template="[`{}`]({})")
+                        text = self._get_text(
+                            element, parsed_url, template="[`{}`]({})"
+                        )
 
                         texts.append(text)
-                    
+
                     elements.append(texts)
-                        
 
                 fields[key] = "\n".join("".join(element) for element in elements)
 
@@ -414,10 +423,8 @@ class DocScraper:
 
         description = "\n\n".join(description).replace("Example:", "").strip()
 
-        full_name = full_name \
-            .replace("¶", "") \
-            .strip()
-                
+        full_name = full_name.replace("¶", "").strip()
+
         url = parsed_url.geturl()
 
         return Documentation(
@@ -426,9 +433,9 @@ class DocScraper:
             description=description,
             examples=examples,
             url=url,
-            fields=fields
+            fields=fields,
         )
-        
+
     async def _get_all_manual_documentations(self, url: str) -> List[Documentation]:
         @executor()
         def bs4(content: str):
@@ -444,53 +451,70 @@ class DocScraper:
         for element in elements:
             result = await self._get_documentation(element, url)
             results.append(result)
-        
+
         return results
-    
+
     async def log(self, updater: Callable, message: str, name: str):
         await self.update(updater, message, name)
         self._logger.info(message.replace("`", ""))
-        
-    async def _cache_all_documentations(self, recache: bool = False, updater: Callable = None) -> Dict[str, List[Documentation]]:
+
+    async def _cache_all_documentations(
+        self, recache: bool = False, updater: Callable = None
+    ) -> Dict[str, List[Documentation]]:
         if self.strgcls._docs_cache != [] and not recache:
             return
-        
+
         await self.log(updater, "Starting documentation caching", "documentation")
-        
+
         @executor()
         def bs4(content: str):
             soup = BeautifulSoup(content, "lxml")
-        
+
             manual_section = soup.find("section", id="manuals")
             manual_lis = manual_section.find_all("li", class_="toctree-l1")
             manual_as = [manual_li.find("a") for manual_li in manual_lis]
-            return [(manual.text, self._build_url(manual.get("href"))) for manual in manual_as]
-        
+            return [
+                (manual.text, self._build_url(manual.get("href")))
+                for manual in manual_as
+            ]
+
         content = await self._get_html(self._base_url)
         manuals = await bs4(content)
-        
+
         results: Dict[str, List[Documentation]] = {}
         for name, manual in manuals:
             try:
                 documentations = await self._get_all_manual_documentations(manual)
             except Exception as exc:
-                error = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
-                self._logger.error(f"Error occured while trying to cache \"{name}\":\n{error}")
+                error = "".join(
+                    traceback.format_exception(type(exc), exc, exc.__traceback__)
+                )
+                self._logger.error(
+                    f'Error occured while trying to cache "{name}":\n{error}'
+                )
             else:
                 if name not in results.keys():
                     results[name] = []
-                
+
                 results[name].append(documentations)
                 for documentation in documentations:
                     self.strgcls._docs_cache.append(documentation)
-                    
-                await self.log(updater, f"`{name}` documentation added to documentation cache", "documentation")
-            
+
+                await self.log(
+                    updater,
+                    f"`{name}` documentation added to documentation cache",
+                    "documentation",
+                )
+
         amount = sum(name in results.keys() for name, _ in manuals)
-        await self.log(updater, f"Successfully cached `{amount}`/`{len(manuals)}` manuals", "documentation")
-        
+        await self.log(
+            updater,
+            f"Successfully cached `{amount}`/`{len(manuals)}` manuals",
+            "documentation",
+        )
+
         return results
-        
+
     async def _wait_for_docs(self, name: str):
         while True:
             if self.strgcls._docs_caching_task.cancelled():
@@ -499,78 +523,99 @@ class DocScraper:
                 return elem
             await asyncio.sleep(1)
 
-    async def get_documentation(self, name: str, updater: Callable = None) -> Documentation:
-        if getattr(self.strgcls, "_docs_cache", None) is None and self.strgcls._docs_caching_task.done():
-            await self.update(updater, f"{LOADING} Documentation cache is not yet built, building now.")
-            self.strgcls._docs_caching_task = asyncio.create_task(self._cache_all_documentations())
-        
+    async def get_documentation(
+        self, name: str, updater: Callable = None
+    ) -> Documentation:
+        if (
+            getattr(self.strgcls, "_docs_cache", None) is None
+            and self.strgcls._docs_caching_task.done()
+        ):
+            await self.update(
+                updater,
+                f"{LOADING} Documentation cache is not yet built, building now.",
+            )
+            self.strgcls._docs_caching_task = asyncio.create_task(
+                self._cache_all_documentations()
+            )
+
         result = discord.utils.get(self.strgcls._docs_cache, name=name)
-        
+
         if not result:
-            await self.update(updater, f"{LOADING} Waiting for caching task, processing command once it's done.")
+            await self.update(
+                updater,
+                f"{LOADING} Waiting for caching task, processing command once it's done.",
+            )
             result = await self._wait_for_docs(name)
-            
+
         if result is False:
             return
-            
+
         return result
-    
+
     async def _build_rtfm_cache(self, recache: bool = False, updater: Callable = None):
         if getattr(self.strgcls, "_inv", None) is not None and not recache:
             return
-        
+
         partial = functools.partial(Inventory, url=self._inv_url)
         loop = asyncio.get_running_loop()
         self.strgcls._inv = await loop.run_in_executor(None, partial)
-        
+
         await self.log(updater, "RTFM cache built", "rtfm")
-        
+
     async def update(self, updater: Callable, message: str, name: str = None):
         if updater:
             loop = asyncio.get_running_loop()
-            
+
             args = [message]
             if name and "name" in inspect.signature(updater).parameters.keys():
                 args.append(name)
-            
+
             if inspect.iscoroutinefunction(updater):
                 return await updater(*args)
-            
+
             partial = functools.partial(updater, *args)
             return await loop.run_in_executor(None, partial)
 
-    async def search(self, query: str, limit: int = None, exclude_std: bool = False, updater: Callable = None) -> SearchResults:
+    async def search(
+        self,
+        query: str,
+        limit: int = None,
+        exclude_std: bool = False,
+        updater: Callable = None,
+    ) -> SearchResults:
         with Timer() as timer:
             if not self.strgcls._rtfm_caching_task.done():
                 await self.update(updater, "Waiting for RTFM caching to be done")
                 await self.strgcls._rtfm_caching_task
-                
+
             # implement task error handling later
 
             def get_name(obj: DataObjStr) -> str:
                 name = obj.name if obj.dispname == "-" else obj.dispname
                 original_name = name
-                
+
                 if obj.domain == "std":
                     name = f"{obj.role}: {name}"
 
                 if self.strgcls._inv.project == "discord.py":
-                    name = name.replace("discord.ext.commands.", "").replace("discord.", "")
+                    name = name.replace("discord.ext.commands.", "").replace(
+                        "discord.", ""
+                    )
 
                 return name, original_name
 
             def build_uri(obj: DataObjStr) -> str:
                 location = obj.uri
-                
-                if location.endswith('$'):
+
+                if location.endswith("$"):
                     location = location[:-1] + obj.name
-                    
+
                 return urljoin(self._base_url, location)
 
             matches = sorted(
                 self.strgcls._inv.objects,
                 key=lambda x: fuzz.ratio(query, x.name),
-                reverse=True
+                reverse=True,
             )
 
             results = [

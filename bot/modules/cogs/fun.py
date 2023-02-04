@@ -1,30 +1,32 @@
 import discord
+import expr
 from discord.ext import commands
 
 from core.bot import amyrin
+from modules.views.calculator import CalculatorView, start_calculator
 
 from . import *
-import expr
-from modules.views.calculator import CalculatorView, start_calculator
 
 
 class Fun(commands.Cog):
     def __init__(self, bot):
         super().__init__()
         self.bot: amyrin = bot
-        
+
         self.expr_states = {}
 
     @command(
         description="Open calculator or calculate given expression",
-        examples=[
-            "{prefix}calculator",
-            "{prefix}calculate 1+1",
-            "{prefix}calc 861/95"
-        ],
-        aliases=["calc", "calculate"]
+        examples=["{prefix}calculator", "{prefix}calculate 1+1", "{prefix}calc 861/95"],
+        aliases=["calc", "calculate"],
     )
-    async def calculator(self, ctx: commands.Context, expression: str = commands.param(default=None, description="The expression you want to calculate")):
+    async def calculator(
+        self,
+        ctx: commands.Context,
+        expression: str = commands.param(
+            default=None, description="The expression you want to calculate"
+        ),
+    ):
         if expression is None:
             return await start_calculator(ctx)
 
@@ -41,17 +43,21 @@ class Fun(commands.Cog):
                 error = exc.friendly
             else:
                 error = exc
-            em.add_field(name="Input", value=f"```mathematica\n{expression}```", inline=False)
+            em.add_field(
+                name="Input", value=f"```mathematica\n{expression}```", inline=False
+            )
             em.add_field(name="Error", value=f"```py\n{str(error)}```", inline=False)
         else:
             if res is None:
                 return await ctx.message.add_reaction(self.bot.icons.checkmark)
-            em.add_field(name="Input", value=f"```mathematica\n{expression}```", inline=False)
+            em.add_field(
+                name="Input", value=f"```mathematica\n{expression}```", inline=False
+            )
             em.add_field(name="Output", value=f"```mathematica\n{res}```", inline=False)
 
         em.set_thumbnail(
             url="https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/"
-                "Calculator_Flat_Icon_Vector.svg/512px-Calculator_Flat_Icon_Vector.svg.png"
+            "Calculator_Flat_Icon_Vector.svg/512px-Calculator_Flat_Icon_Vector.svg.png"
         )
         await ctx.send(embed=em)
 

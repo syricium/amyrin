@@ -1,9 +1,9 @@
 import os
 import pathlib
+import traceback
 
 from discord.ext import commands, tasks
 
-import traceback
 from core.bot import amyrin
 
 IGNORE_EXTENSIONS = []
@@ -46,8 +46,10 @@ class HotReload(commands.Cog):
                     exc = "".join(
                         traceback.format_exception(type(exc), exc, exc.__traceback__)
                     )
-                    
-                    self.bot.logger.error(f"Error occured loading module {extension}:\n{exc}")
+
+                    self.bot.logger.error(
+                        f"Error occured loading module {extension}:\n{exc}"
+                    )
                 except commands.ExtensionNotLoaded:
                     continue
                 else:

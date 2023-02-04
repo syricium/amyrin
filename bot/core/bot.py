@@ -31,10 +31,7 @@ debug = (
 
 class amyrin(commands.Bot):
     def __init__(self, *args, **kwargs) -> commands.Bot:
-        super().__init__(
-            command_prefix=self._get_prefix(debug),
-            *args, **kwargs
-        )
+        super().__init__(command_prefix=self._get_prefix(debug), *args, **kwargs)
         self.uptime = datetime.utcnow()
         self.myst = mystbin.Client(token=os.getenv("MYSTBIN_API"))
 
@@ -62,15 +59,14 @@ class amyrin(commands.Bot):
         self.color = (
             0x2F3136  # color used for embeds and whereever else it would be appropiate
         )
-        
 
     @tasks.loop(hours=3)
     async def pfp_rotation(self):
         if self.debug:
             return
-        
+
         await self.wait_until_ready()
-        
+
         root = os.getcwd()
         path = os.path.join(root, "pfps")
         if os.path.isdir(path):
@@ -85,23 +81,23 @@ class amyrin(commands.Bot):
     def _get_prefix(self, debug: bool = None):
         if debug is None:
             debug = self.debug
-            
+
         async def get_prefix(bot: commands.Bot, message: discord.Message = None) -> str:
             if debug:
                 return "amyd"
             return commands.when_mentioned_or(*["amy"])(bot, message)
-        
+
         return get_prefix
-    
+
     async def get_formatted_prefix(self, debug: bool = None):
         command_prefix = self._get_prefix(debug=debug)
-        
+
         if inspect.isfunction(command_prefix):
             command_prefix = await command_prefix(bot)
-            
+
         if isinstance(command_prefix, list):
             command_prefix = command_prefix[-1]
-            
+
         return command_prefix
 
     @property
@@ -137,10 +133,10 @@ class amyrin(commands.Bot):
 
             for file in files:  # iterate through all files in a subdirectory
                 fn = file[:-3]
-                
+
                 if os.path.isdir(os.path.join(prefix, fn)):
                     continue
-                
+
                 name = f"{prefix}.{fn}"
                 try:
                     imp = importlib.import_module(name)
@@ -192,20 +188,20 @@ class amyrin(commands.Bot):
                 else:
                     text = f"├─ {k}: {v}"
                 self.logger.info(indent(text, "  "))
-                
+
         with open("restart.json", "r") as f:
             data = json.load(f)
             if not data:
                 return
-            
+
             guild = data.get("guild")
             channel = data.get("channel")
             message = data.get("message")
-            time = datetime.utcnow().timestamp()-data.get("time")
-                
+            time = datetime.utcnow().timestamp() - data.get("time")
+
             if not (guild or channel or message or time):
                 return
-            
+
             try:
                 guild: discord.Guild = self.get_guild(guild)
                 channel: discord.TextChannel = guild.get_channel(channel)

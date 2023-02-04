@@ -3,11 +3,13 @@ from copy import copy
 from typing import List, Optional
 
 import discord
+import humanfriendly
 from discord.ext import commands
 
 from modules.util.converters import format_list
-import humanfriendly
+
 from . import PermissionTemplates
+
 
 class _HelpCommand(commands.HelpCommand):
     def __init__(self, *args, **kwargs):
@@ -20,9 +22,11 @@ class _HelpCommand(commands.HelpCommand):
             return f"{self.context.prefix}{command.qualified_name} {command.signature}"
 
     def get_ending_note(self):
-        return "❗ App (slash) commands are not listed here\n" \
-                f"📝 Use {self.context.prefix}{self.invoked_with} [command]" \
-                "📝 for more info on a command"
+        return (
+            "❗ App (slash) commands are not listed here\n"
+            f"📝 Use {self.context.prefix}{self.invoked_with} [command]"
+            "📝 for more info on a command"
+        )
 
     async def send_bot_help(self, mapping, used=None):
         if used:
@@ -114,26 +118,34 @@ class _HelpCommand(commands.HelpCommand):
             value=self.get_command_signature(group, group_main=group.full_parent_name),
             inline=False,
         )
-        
+
         if documentation.permissions != {"bot": [], "user": []}:
             em.add_field(
                 name="Permissions",
-                value="\n".join(f"{name}: {', '.join(permission.replace('_', ' ').title() for permission in permissions)}" for name, permissions in documentation.permissions.items()),
-                inline=False
+                value="\n".join(
+                    f"{name}: {', '.join(permission.replace('_', ' ').title() for permission in permissions)}"
+                    for name, permissions in documentation.permissions.items()
+                ),
+                inline=False,
             )
-            
+
         if documentation.examples:
             em.add_field(
                 name="Examples",
-                value="\n".join(f"```\n{example}\n```" for example in documentation.examples),
-                inline=False
+                value="\n".join(
+                    f"```\n{example}\n```" for example in documentation.examples
+                ),
+                inline=False,
             )
-            
+
         if documentation.parameters:
             em.add_field(
                 name="Parameters",
-                value="\n".join(f"{parameter.name} ({format_list(parameter.types, brackets='`')}): {parameter.description}" for parameter in documentation.parameters),
-                inline=False
+                value="\n".join(
+                    f"{parameter.name} ({format_list(parameter.types, brackets='`')}): {parameter.description}"
+                    for parameter in documentation.parameters
+                ),
+                inline=False,
             )
 
         em.add_field(name="Cooldown", value=cooldown_msg, inline=False)
@@ -174,43 +186,51 @@ class _HelpCommand(commands.HelpCommand):
                 f'❌ No command or cog called "{string}" found.'
             )
 
-    async def command_callback(self, ctx: commands.Context, /, *, command: Optional[str] = None) -> None:
+    async def command_callback(
+        self, ctx: commands.Context, /, *, command: Optional[str] = None
+    ) -> None:
         """
         base command_callback function but made case insensitive
         """
-        
+
         await self.prepare_help_command(ctx)
-        
+
         bot: commands.Bot = ctx.bot
-        
+
         if command is None:
             mapping = self.get_bot_mapping()
             return await self.send_bot_help(mapping)
-        
+
         cog = discord.utils.find(lambda x: x[0].lower() == command, bot.cogs.items())
         if cog is not None:
             return await self.send_cog_help(cog[1])
-        
+
         maybe_coro = discord.utils.maybe_coroutine
-        
-        keys = command.split(' ')
+
+        keys = command.split(" ")
         cmd = bot.all_commands.get(keys[0].lower())
         if cmd is None:
-            string = await maybe_coro(self.command_not_found, self.remove_mentions(keys[0]))
+            string = await maybe_coro(
+                self.command_not_found, self.remove_mentions(keys[0])
+            )
             return await self.send_error_message(string)
-        
+
         for key in keys[1:]:
             try:
                 found = cmd.all_commands.get(key)  # type: ignore
             except AttributeError:
-                string = await maybe_coro(self.subcommand_not_found, cmd, self.remove_mentions(key))
+                string = await maybe_coro(
+                    self.subcommand_not_found, cmd, self.remove_mentions(key)
+                )
                 return await self.send_error_message(string)
             else:
                 if found is None:
-                    string = await maybe_coro(self.subcommand_not_found, cmd, self.remove_mentions(key))
+                    string = await maybe_coro(
+                        self.subcommand_not_found, cmd, self.remove_mentions(key)
+                    )
                     return await self.send_error_message(string)
                 cmd = found
-                
+
         if isinstance(cmd, commands.Group):
             return await self.send_group_help(cmd)
         else:
@@ -252,26 +272,34 @@ class _HelpCommand(commands.HelpCommand):
                 command, group_main=command.full_parent_name
             ),
         )
-        
+
         if documentation.permissions != {"bot": [], "user": []}:
             em.add_field(
                 name="Permissions",
-                value="\n".join(f"{name}: {', '.join(permission.replace('_', ' ').title() for permission in permissions)}" for name, permissions in documentation.permissions.items()),
-                inline=False
+                value="\n".join(
+                    f"{name}: {', '.join(permission.replace('_', ' ').title() for permission in permissions)}"
+                    for name, permissions in documentation.permissions.items()
+                ),
+                inline=False,
             )
-            
+
         if documentation.examples:
             em.add_field(
                 name="Examples",
-                value="\n".join(f"```\n{example}\n```" for example in documentation.examples),
-                inline=False
+                value="\n".join(
+                    f"```\n{example}\n```" for example in documentation.examples
+                ),
+                inline=False,
             )
-            
+
         if documentation.parameters:
             em.add_field(
                 name="Parameters",
-                value="\n".join(f"{parameter.name} ({format_list(parameter.types, brackets='`')}): {parameter.description}" for parameter in documentation.parameters),
-                inline=False
+                value="\n".join(
+                    f"{parameter.name} ({format_list(parameter.types, brackets='`')}): {parameter.description}"
+                    for parameter in documentation.parameters
+                ),
+                inline=False,
             )
 
         em.add_field(name="Cooldown", value=cooldown_msg, inline=False)
@@ -301,12 +329,12 @@ class HelpCommand(commands.Cog):
                         "bot": [
                             "send_messages",
                             "read_message_history",
-                            "send_messages_in_threads"
+                            "send_messages_in_threads",
                         ],
                         "user": [
                             "send_messages",
                             "read_message_history",
-                            "send_messages_in_threads"
+                            "send_messages_in_threads",
                         ],
                     }
                 },

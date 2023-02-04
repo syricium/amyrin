@@ -1,16 +1,16 @@
 import sys
+import typing
+from importlib.metadata import distribution, packages_distributions
 
 import discord
 import humanize
 import jishaku
 import psutil
 from discord.ext import commands
-from importlib.metadata import distribution, packages_distributions
 from jishaku.cog import OPTIONAL_FEATURES, STANDARD_FEATURES
 from jishaku.features.baseclass import Feature
-from jishaku.modules import package_version
-import typing
 from jishaku.math import natural_size
+from jishaku.modules import package_version
 
 from core.bot import amyrin
 
@@ -36,24 +36,25 @@ class Jishaku(*OPTIONAL_FEATURES, *STANDARD_FEATURES):
 
         # Try to locate what vends the `discord` package
         distributions: typing.List[str] = [
-            dist for dist in packages_distributions()['discord']  # type: ignore
+            dist
+            for dist in packages_distributions()["discord"]  # type: ignore
             if any(
-                file.parts == ('discord', '__init__.py')  # type: ignore
+                file.parts == ("discord", "__init__.py")  # type: ignore
                 for file in distribution(dist).files  # type: ignore
             )
         ]
 
         if distributions:
-            dist_version = f'{distributions[0]} `{package_version(distributions[0])}`'
+            dist_version = f"{distributions[0]} `{package_version(distributions[0])}`"
         else:
-            dist_version = f'unknown `{discord.__version__}`'
+            dist_version = f"unknown `{discord.__version__}`"
 
         summary = [
             f"Jishaku v{package_version('jishaku')}, {dist_version}, "
             f"`Python {sys.version}` on `{sys.platform}`".replace("\n", ""),
             f"Module was loaded <t:{self.load_time.timestamp():.0f}:R>, "
             f"cog was loaded <t:{self.start_time.timestamp():.0f}:R>.",
-            ""
+            "",
         ]
 
         # detect if [procinfo] feature is installed
@@ -64,9 +65,11 @@ class Jishaku(*OPTIONAL_FEATURES, *STANDARD_FEATURES):
                 with proc.oneshot():
                     try:
                         mem = proc.memory_full_info()
-                        summary.append(f"Using {natural_size(mem.rss)} physical memory and "
-                                       f"{natural_size(mem.vms)} virtual memory, "
-                                       f"{natural_size(mem.uss)} of which unique to this process.")
+                        summary.append(
+                            f"Using {natural_size(mem.rss)} physical memory and "
+                            f"{natural_size(mem.vms)} virtual memory, "
+                            f"{natural_size(mem.uss)} of which unique to this process."
+                        )
                     except psutil.AccessDenied:
                         pass
 
@@ -75,7 +78,9 @@ class Jishaku(*OPTIONAL_FEATURES, *STANDARD_FEATURES):
                         pid = proc.pid
                         thread_count = proc.num_threads()
 
-                        summary.append(f"Running on PID {pid} (`{name}`) with {thread_count} thread(s).")
+                        summary.append(
+                            f"Running on PID {pid} (`{name}`) with {thread_count} thread(s)."
+                        )
                     except psutil.AccessDenied:
                         pass
 
@@ -98,7 +103,7 @@ class Jishaku(*OPTIONAL_FEATURES, *STANDARD_FEATURES):
                     f" and can see {cache_summary}."
                 )
             else:
-                shard_ids = ', '.join(str(i) for i in self.bot.shards.keys())
+                shard_ids = ", ".join(str(i) for i in self.bot.shards.keys())
                 summary.append(
                     f"This bot is automatically sharded (Shards {shard_ids} of {self.bot.shard_count})"
                     f" and can see {cache_summary}."
@@ -117,16 +122,11 @@ class Jishaku(*OPTIONAL_FEATURES, *STANDARD_FEATURES):
         else:
             message_cache = "Message cache is disabled"
 
-        remarks = {
-            True: 'enabled',
-            False: 'disabled',
-            None: 'unknown'
-        }
+        remarks = {True: "enabled", False: "disabled", None: "unknown"}
 
         *group, last = (
             f"{intent.replace('_', ' ')} intent is {remarks.get(getattr(self.bot.intents, intent, None))}"
-            for intent in
-            ('presences', 'members', 'message_content')
+            for intent in ("presences", "members", "message_content")
         )
 
         summary.append(f"{message_cache}, {', '.join(group)}, and {last}.")
@@ -134,7 +134,9 @@ class Jishaku(*OPTIONAL_FEATURES, *STANDARD_FEATURES):
         # pylint: enable=protected-access
 
         # Show websocket latency in milliseconds
-        summary.append(f"Average websocket latency: {round(self.bot.latency * 1000, 2)}ms")
+        summary.append(
+            f"Average websocket latency: {round(self.bot.latency * 1000, 2)}ms"
+        )
 
         embed = discord.Embed(description="\n".join(summary), color=ctx.bot.color)
         embed.set_author(name=ctx.bot.user.name, icon_url=ctx.bot.user.avatar.url)

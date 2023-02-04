@@ -33,6 +33,7 @@ class CommandPermissions:
     bot: List[str] = field(default_factory=list)
     user: List[str] = field(default_factory=list)
 
+
 def command(
     func: Union[
         app_commands.command,

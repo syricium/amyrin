@@ -37,7 +37,7 @@ class PullView(View):
             except commands.ExtensionNotLoaded:
                 imp = importlib.import_module(module)
                 importlib.reload(imp)
-                reloaded[module] = None 
+                reloaded[module] = None
             except Exception as exc:
                 error = traceback.format_exception(type(exc), exc, exc.__traceback__)
                 reloaded[module] = "\n".join(error)
@@ -67,5 +67,5 @@ class PullView(View):
     ) -> None:
         await interaction.response.defer()
         await self.disable_all(interaction)
-        command = self.context.bot.get_command("restart") #
+        command = self.context.bot.get_command("restart")
         await command(self.context)
