@@ -62,7 +62,7 @@ class amyrin(commands.Bot):
         )
         
 
-    @tasks.loop(hours=1)
+    @tasks.loop(hours=3)
     async def pfp_rotation(self):
         if self.debug:
             return
