@@ -267,7 +267,8 @@ class Developer(commands.Cog, command_attrs={"hidden": True}):
                 description="\n".join(
                     f"`{name}` invoked at {discord.utils.format_dt(time, 'F')}"
                     for name, task, time in tasks
-                )
+                ),
+                color=self.bot.color
             )
             for tasks in wrapped_tasks
         ]
