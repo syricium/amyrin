@@ -280,13 +280,14 @@ class DocScraper:
         rtfs_repos = os.path.join(os.getcwd(), "rtfs_repos")
         rtfs_repo = os.path.join(rtfs_repos, repo)
         path = os.path.join(rtfs_repo, dir_name)
+
+        if not os.path.isdir(path):
+            await self._shell(f"git clone {url} {rtfs_repo}")
+            
         commit_path = os.path.join(rtfs_repo, ".git/refs/heads/master")
 
         with open(commit_path) as f:
             self.strgcls._rtfs_commit = f.readline().strip()
-
-        if not os.path.isdir(path):
-            await self._shell(f"git clone {url} {rtfs_repo}")
 
         await self._rtfs_index_directory(path)
 
@@ -299,7 +300,7 @@ class DocScraper:
         updater: Callable = None,
     ) -> List[RTFSItem]:
         if not self.strgcls._rtfs_caching_task.done():
-            await self.update("Waiting for RTFS caching task")
+            await self.update(updater, "Waiting for RTFS caching task")
             await self.strgcls._rtfs_caching_task
 
         results = []

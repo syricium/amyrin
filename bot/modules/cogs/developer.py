@@ -57,6 +57,9 @@ class Developer(commands.Cog, command_attrs={"hidden": True}):
         super().__init__()
         self.bot: amyrin = bot
         self.module_regex = re.compile(r"bot\/(?P<module>modules\/.+)\.py")
+    
+    async def cog_check(self, ctx: commands.Context) -> bool:
+        return await self.bot.is_owner(ctx.author)
 
     async def shell(self, code: str, wait: bool = True):
         proc = await asyncio.subprocess.create_subprocess_shell(
@@ -124,7 +127,6 @@ class Developer(commands.Cog, command_attrs={"hidden": True}):
         permissions=CommandPermissions(template=PermissionTemplates.text_command),
         invoke_without_command=True,
     )
-    @commands.is_owner()
     async def _eval(self, ctx, *, code: codeblock_converter):
         def gen_eval_name():
             while True:
@@ -138,7 +140,16 @@ class Developer(commands.Cog, command_attrs={"hidden": True}):
                     await self.send(ctx, i)
 
         code = code.content
+        
+        # omg console.log in python 😱😰😰
+        class console:
+            @classmethod
+            def log(cls, *args, **kwargs):
+                print(*args, **kwargs)
 
+        ref = None \
+            if ctx.message.reference is None \
+            else ctx.message.reference.resolved,
         env = {
             "author": ctx.message.author,
             "bot": self.bot,
@@ -152,13 +163,12 @@ class Developer(commands.Cog, command_attrs={"hidden": True}):
             "src": inspect.getsource,
             "srcls": inspect.getsourcelines,
             "commands": commands,
-            "rf": None
-            if ctx.message.reference is None
-            else ctx.message.reference.resolved,
+            "console": console,
+            "ref": ref,
+            "rf": ref
         }
 
-        for k, v in sys.modules.items():
-            env[k] = v
+        env.update(sys.modules.items())
 
         """ Code Parsing """
 
@@ -288,7 +298,6 @@ class Developer(commands.Cog, command_attrs={"hidden": True}):
         examples=["{prefix}as flowerpad#0001 help"],
         permissions=CommandPermissions(template=PermissionTemplates.text_command),
     )
-    @commands.is_owner()
     async def _as(self, ctx, user: discord.Member, *, command: str):
         prefix = await self.bot.get_formatted_prefix()
         msg = copy(ctx.message)
@@ -302,7 +311,6 @@ class Developer(commands.Cog, command_attrs={"hidden": True}):
         examples=["{prefix}update"],
         permissions=CommandPermissions(template=PermissionTemplates.text_command),
     )
-    @commands.is_owner()
     async def update(self, ctx: commands.Context):
         async with ctx.typing():
             result = await self.shell("git pull --force --stat")
@@ -327,7 +335,6 @@ class Developer(commands.Cog, command_attrs={"hidden": True}):
         examples=["{prefix}restart"],
         permissions=CommandPermissions(template=PermissionTemplates.text_command),
     )
-    @commands.is_owner()
     async def restart(self, ctx: commands.Context):
         await ctx.message.reply("Now restarting bot")
 

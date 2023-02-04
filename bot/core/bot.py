@@ -209,7 +209,7 @@ class amyrin(commands.Bot):
             except AttributeError:
                 return
 
-            took = humanfriendly.format_timespan(time)
+            took = humanfriendly.format_timespan(int(time))
             await message.reply(f"Restart took {took}")
             with open("restart.json", "w") as w:
                 w.write("{}")

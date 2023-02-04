@@ -1,5 +1,9 @@
+from datetime import datetime
+from email.quoprimime import quote
 import os
 from io import BytesIO
+import re
+import discord
 
 import magic
 from aiohttp import FormData
@@ -9,9 +13,15 @@ from core.bot import amyrin
 from modules.util.converters import FileConverter, URLObject
 from modules.util.executor import executor
 from modules.views.song import SongView
+from urllib.parse import quote_plus
+from modules.views.paginator import paginate
 
 from . import *
 
+URBAN_DICTIONARY_HYPERLINK_REGEX = r"\[([^\]]+)\]"
+URBAN_DICTIONARY_API_URL = "https://api.urbandictionary.com/v0/define"
+URBAN_DICTIONARY_URL = "https://www.urbandictionary.com/define.php?term={}"
+URBAN_DICTIONARY_AUTHOR_URL = "https://www.urbandictionary.com/author.php?author={}"
 
 class Utility(commands.Cog):
     def __init__(self, bot):
@@ -21,6 +31,78 @@ class Utility(commands.Cog):
     @executor()
     def _detect_content_type(self, buffer: BytesIO):
         return magic.from_buffer(buffer)
+    
+    def _format_ud_hyperlink(self, term: str):
+        formatted_term = quote_plus(term)
+        return URBAN_DICTIONARY_URL.format(formatted_term)
+    
+    def _format_ud_text(self, text: str):
+        new_text = text
+        for result in re.finditer(URBAN_DICTIONARY_HYPERLINK_REGEX, text):
+            start = result.start()
+            end = result.end()
+            term = text[start+1:end-1]
+            formatted_hyperlink = self._format_ud_hyperlink(term)
+            hyperlink_text = f"[{term}]({formatted_hyperlink})"
+            new_text = new_text.replace(text[start:end], hyperlink_text)
+                
+        return new_text
+    
+    def _format_ud_definitions(self, definitions: List[dict]) -> List[discord.Embed]:
+        embeds = []
+        for definition in definitions:
+            word = definition["word"]
+            text = self._format_ud_text(definition["definition"])
+            author = definition["author"]
+            author_url = URBAN_DICTIONARY_AUTHOR_URL.format(quote_plus(author))
+            example = self._format_ud_text(definition["example"])
+            written_on = datetime.fromisoformat(definition["written_on"])
+            permalink = definition["permalink"]
+            thumbs_up = definition["thumbs_up"]
+            thumbs_down = definition["thumbs_down"]
+            
+            description = f"{text}\n\n**Example:**\n{example}"
+            embed = discord.Embed(
+                url=permalink,
+                title=word,
+                description=description,
+                timestamp=written_on,
+                color=self.bot.color
+            )
+            embed.set_footer(text=f"\N{THUMBS UP SIGN} {thumbs_up} | \N{THUMBS DOWN SIGN} {thumbs_down}")
+            embed.set_author(
+                name=author,
+                url=author_url
+            )
+            
+            embeds.append(embed)
+            
+        return embeds
+    
+    @command(
+        aliases=["ud", "urban"],
+        description="Look up a term in the urban dictionary",
+        examples=["{prefix}ud bottom"],
+    )
+    async def urbandictionary(
+        self,
+        ctx: commands.Context,
+        term: str = commands.param(description="The term you want to look up"),
+    ):
+        resp = await self.bot.session.get(
+            URBAN_DICTIONARY_API_URL,
+            params={"term": term}
+        )
+        
+        if resp.status != 200:
+            return await ctx.send("Failed to get term definition")
+        
+        data = await resp.json()
+        definitions = data["list"]
+        embeds: List[discord.Embed] = self._format_ud_definitions(definitions)
+        
+        await paginate(ctx, embeds, timeout=30)
+                
 
     @command(
         description="Look up a song and it's lyrics",

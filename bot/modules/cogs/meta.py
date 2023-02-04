@@ -3,6 +3,7 @@ import pathlib
 from datetime import datetime
 
 import discord
+import humanfriendly
 import humanize
 import psutil
 from discord.ext import commands
@@ -12,12 +13,16 @@ from core.bot import amyrin
 from . import *
 
 
-class Miscellaneous(commands.Cog):
+class Meta(commands.Cog):
     def __init__(self, bot):
         super().__init__()
         self.bot: amyrin = bot
+        
+    def _format_uptime(self):
+        delta_uptime = datetime.utcnow() - self.bot.uptime
+        return humanfriendly.format_timespan(int(delta_uptime.total_seconds()))
 
-    @command(description="Get the ping of the bot", examples=["{prefix}ping"])
+    @command(description="Get my ping", aliases=["latency"], examples=["{prefix}ping"])
     async def ping(self, ctx: commands.Context | discord.Interaction):
         websocket = round(self.bot.latency * 1000, 2)
 
@@ -28,6 +33,12 @@ class Miscellaneous(commands.Cog):
         )
 
         await ctx.send(embed=em)
+        
+    @command(description="Get my uptime", examples=["{prefix}uptime"])
+    async def uptime(self, ctx: commands.Context | discord.Interaction):
+        uptime = self._format_uptime()
+        
+        await ctx.send(f"I have been up for {uptime}")
 
     @command(
         description="Get info about oynx's file stats and host stats",
@@ -36,27 +47,29 @@ class Miscellaneous(commands.Cog):
     @commands.cooldown(1, 20)
     async def about(self, ctx: commands.Context | discord.Interaction):
         path = pathlib.Path(os.getcwd())
+        ignored = [
+            pathlib.Path(os.path.join(path, "rtfs_repos")),
+        ]
 
         def line_count():
             files = classes = funcs = comments = lines = characters = 0
-            directories = ["cogs", "core", "utils"]
-            for directory in directories:
-                p = pathlib.Path(path).joinpath(directory)
-                for f in p.rglob(f"*.py"):
-                    files += 1
-                    with open(f) as of:
-                        characters += len(open(f).read())
-                        for line in of.readlines():
-                            line = line.strip()
-                            if line.startswith("class"):
-                                classes += 1
-                            if line.startswith("def"):
-                                funcs += 1
-                            if line.startswith("async def"):
-                                funcs += 1
-                            if "#" in line:
-                                comments += 1
-                            lines += 1
+            for f in path.rglob(f"*.py"):
+                if any(parent in ignored for parent in f.parents):
+                    continue
+                files += 1
+                with open(f) as of:
+                    characters += len(open(f).read())
+                    for line in of.readlines():
+                        line = line.strip()
+                        if line.startswith("class"):
+                            classes += 1
+                        if line.startswith("def"):
+                            funcs += 1
+                        if line.startswith("async def"):
+                            funcs += 1
+                        if "#" in line:
+                            comments += 1
+                        lines += 1
             return files, classes, funcs, comments, lines, characters
 
         if ctx.interaction:
@@ -76,15 +89,12 @@ class Miscellaneous(commands.Cog):
         pid = os.getpid()
         process = psutil.Process(pid)
 
-        delta_uptime = datetime.utcnow() - self.bot.uptime
-        hours, remainder = divmod(int(delta_uptime.total_seconds()), 3600)
-        minutes, seconds = divmod(remainder, 60)
-        days, hours = divmod(hours, 24)
+        uptime = self._format_uptime()
 
         em = discord.Embed(description=self.bot.description, color=self.bot.color)
         em.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar.url)
         em.add_field(name="Developer", value=str(self.bot.owner))
-        em.add_field(name="Uptime", value=f"{days}d, {hours}h, {minutes}m, {seconds}s")
+        em.add_field(name="Uptime", value=uptime)
         em.add_field(name="​", value="​")
 
         f_stats = {
@@ -135,4 +145,4 @@ Disk Used: {psutil.disk_usage(str(path)).percent}%
 
 
 async def setup(bot):
-    await bot.add_cog(Miscellaneous(bot))
+    await bot.add_cog(Meta(bot))
