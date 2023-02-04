@@ -328,6 +328,8 @@ class Developer(commands.Cog, command_attrs={"hidden": True}):
     )
     @commands.is_owner()
     async def restart(self, ctx: commands.Context):
+        await ctx.message.reply("Now restarting bot")
+        
         with open("restart.json", "w") as f:
             data = {
                 "guild": ctx.guild.id,
