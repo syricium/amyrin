@@ -656,7 +656,7 @@ class DocScraper:
             # implement task error handling later
 
             def get_name(obj: DataObjStr) -> str:
-                name = obj.name if obj.dispname == "-" else obj.dispname
+                name = obj.name if obj.name else obj.dispname if obj.dispname not in ["-", None] else None
                 original_name = name
 
                 if obj.domain == "std":
@@ -667,7 +667,7 @@ class DocScraper:
                         "discord.", ""
                     )
 
-                return name, original_name
+                return name, original_name or name
 
             def build_uri(obj: DataObjStr) -> str:
                 location = obj.uri
