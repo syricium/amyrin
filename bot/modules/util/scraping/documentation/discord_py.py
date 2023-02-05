@@ -146,11 +146,14 @@ class DocScraper:
 
         self._rtfs_repo = (
             "discord.py",
-            "https://dpy.gh.0a3.cc/tree/master",
+            "https://dpy.gh.0a3.cc",
             "discord",
         )
 
         self._setup_logger()
+        
+        if not getattr(self.strgcls, "_pages", None):
+            self.strgcls._pages = {}
         
         if not getattr(self.strgcls, "_docs_caching_progress", None):
             self.strgcls._docs_caching_progress = {}
@@ -283,6 +286,9 @@ class DocScraper:
     async def _build_rtfs_cache(self, recache: bool = False, updater: Callable = None):
         if self.strgcls._rtfs_cache != {} and not recache:
             return
+        
+        if recache:
+            self.strgcls._rtfs_cache = {}
 
         repo, url, dir_name = self._rtfs_repo
 
@@ -334,7 +340,7 @@ class DocScraper:
 
         return RTFSResults(matches)
 
-    async def _get_html(self, url: str, timeout: int = 0, wait: bool = True) -> str:
+    async def _get_html(self, url: str, id: str, timeout: int = 0, wait: bool = True) -> str:
         page = await self._browser.new_page()
 
         await page.goto(url)
@@ -345,10 +351,8 @@ class DocScraper:
             except PlaywrightTimeoutError:
                 pass
 
-        content = await page.content()
-        await page.close()
-
-        return content
+        self.strgcls._pages[id] = page
+        return await page.content()
 
     def _build_url(self, partial_url: str) -> str:
         return self._base_url + partial_url
@@ -409,9 +413,26 @@ class DocScraper:
                 if len(items) >= 2:
                     attributes["methods"] = format_attributes(items[1])
 
-
-        field_list = documentation.find("dl", class_="field-list", recursive=False)
         fields = {}
+        
+        if supported_operations := documentation.find("div", class_="operations", recursive=False):
+            items: List[set[str, str]] = []
+            for supported_operation in supported_operations.findChildren("dl", class_="describe"):
+                operation = supported_operation \
+                    .find("span", class_="descname") \
+                    .text
+                desc = self._get_text(
+                    supported_operation.find("dd", recursive=False), parsed_url
+                )
+                items.append((operation, desc))
+                
+            if items:
+                fields["Supported Operations"] = "\n\n".join(
+                    f"> {operation}\n{desc}"
+                    for operation, desc in items
+                )
+        
+        field_list = documentation.find("dl", class_="field-list", recursive=False)
         if field_list:
             for field in field_list.findChildren("dt"):
                 field: Tag = field
@@ -482,7 +503,7 @@ class DocScraper:
 
             return soup.find_all("dt", class_="sig sig-object py")
 
-        elements = await bs4(await self._get_html(url))
+        elements = await bs4(await self._get_html(url, url))
 
         results = []
         for element in elements:
@@ -500,6 +521,9 @@ class DocScraper:
     ) -> Dict[str, List[Documentation]]:
         if self.strgcls._docs_cache != [] and not recache:
             return
+        
+        if recache:
+            self.strgcls._docs_cache = []
 
         await self.log(updater, "Starting documentation caching", "documentation")
 
@@ -515,7 +539,7 @@ class DocScraper:
                 for manual in manual_as
             ]
 
-        content = await self._get_html(self._base_url)
+        content = await self._get_html(self._base_url, "manuals")
         manuals = await bs4(content)
         
         for name, _ in manuals:
@@ -557,7 +581,6 @@ class DocScraper:
         return results
 
     async def _wait_for_docs(self, name: str, updater: Callable = None):
-        msg = await self.update(updater, f"{LOADING} Waiting for caching task, processing command once it's done.")
         while True:
             if self.strgcls._docs_caching_task.cancelled():
                 await self.update(updater, f"Documentation caching task has been cancelled, aborting.")
@@ -589,6 +612,7 @@ class DocScraper:
             elif self.strgcls._docs_caching_task.done():
                 await self.update(updater, "Element could not be found")
                 return False
+            msg = await self.update(updater, f"{LOADING} Waiting for caching task, processing command once it's done.")
             await asyncio.sleep(1)
 
     async def get_documentation(
@@ -619,7 +643,7 @@ class DocScraper:
     async def _build_rtfm_cache(self, recache: bool = False, updater: Callable = None):
         if getattr(self.strgcls, "_inv", None) is not None and not recache:
             return
-
+        
         partial = functools.partial(Inventory, url=self._inv_url)
         loop = asyncio.get_running_loop()
         self.strgcls._inv = await loop.run_in_executor(None, partial)

@@ -9,7 +9,7 @@ from .base import View
 async def paginate(
     ctx: commands.Context | discord.Interaction,
     embeds: List,
-    timeout: int = 10,
+    timeout: int = 30,
     emojis: dict = None,
     index: int = None,
     page_count: int = None,
@@ -110,7 +110,7 @@ class EmbedPaginator:
             pages = self.page_count or self.pages
         return f"{index}/{pages}"
 
-    def new_view(self, timeout: int = 10):
+    def new_view(self, timeout: int = 30):
         _self = self
 
         class NewView(View):
@@ -233,7 +233,7 @@ class EmbedPaginator:
     async def start(
         self,
         ctx: commands.Context | discord.Interaction,
-        timeout: int = 10,
+        timeout: int = 30,
         *args,
         **kwargs,
     ):
@@ -250,7 +250,8 @@ class EmbedPaginator:
             self.message = await ctx.send(**kwargs)
         elif isinstance(ctx, discord.Message):
             self.message = await ctx.channel.send(**kwargs)
-        elif isinstance(discord.Interaction):
-            self.message = await ctx.response.send_message(**kwargs)
+        elif isinstance(ctx, discord.Interaction):
+            await ctx.response.send_message(**kwargs)
+            self.message = await ctx.original_response()
 
         return self.message

@@ -111,7 +111,9 @@ class Developer(commands.Cog, command_attrs={"hidden": True}):
         if isinstance(result, discord.File):
             return await ctx.send(file=result)
         if isinstance(result, str):
-            return await ctx.send(f"```py\n{str(result).replace('``', '`​`')}```")
+            if len(result.splitlines()) > 1:
+                return await ctx.send(f"```py\n{str(result).replace('``', '`​`')}```")
+            return await ctx.send(result)
         if isinstance(result, discord.ui.View):
             return await ctx.send(view=result)
         if result is None:

@@ -1,3 +1,4 @@
+import math
 import random
 import string
 from typing import List, Optional
@@ -8,6 +9,7 @@ from discord.ext import commands
 from modules.util.scraping.documentation.discord_py import (DocScraper,
                                                             SearchResults)
 
+from modules.views.paginator import paginate
 from .base import View
 
 
@@ -164,28 +166,28 @@ class DocView(View):
                 "please report this to my developer if there are.",
                 ephemeral=True,
             )
-
-        embed = discord.Embed(color=self._color)
         
         def format_attribute(name: str, url: str):
             return f"[{name}]({url})"
         
+        embeds = []
+        
         for name, attributes in self._current.attributes.items():
-            new_attributes = []
-            for attribute in attributes:
-                new_attribute = new_attributes + [f"> {format_attribute(*attribute)}"]
-                
-                
-                if len("\n".join(new_attribute)) > 1024:
-                    break
-                
-                new_attributes = new_attribute
-                
-            embed.add_field(
-                name=name.title(),
-                value="\n".join(new_attributes)
-            )
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+            limit = 4096 # maximum embed description limit
+            amount = math.ceil(len(attributes) / limit) # calculate amount of embeds
+            
+            formatted_attributes = [format_attribute(name, url) for name, url in attributes]
+            for _ in range(amount):
+                embed = discord.Embed(
+                    title=name.title(),
+                    description="\n".join(f"> {attribute}" for attribute in formatted_attributes[:limit]),
+                    color=self._color
+                )
+                embeds.append(embed)
+                formatted_attributes = formatted_attributes[:-limit]
+            
+        await paginate(interaction, embeds=embeds, ephemeral=True)
+        #await interaction.response.send_message(embed=embed, ephemeral=True)
 
     async def show_examples(self, interaction: discord.Interaction) -> None:
         if not self._current:
@@ -200,15 +202,17 @@ class DocView(View):
                 "please report this to my developer if there are.",
                 ephemeral=True,
             )
+            
+        def build_embed(example):
+            return discord.Embed(
+                title="Examples",
+                description=f"```py\n{example}\n```",
+                color=self._color,
+            )
+            
+        embeds = [build_embed(example) for example in self._current.examples]
 
-        embed = discord.Embed(
-            title="Examples",
-            description="\n".join(
-                f"```py\n{example}\n```" for example in self._current.examples
-            ),
-            color=self._color,
-        )
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await paginate(interaction, embeds, ephemeral=True)
 
     async def start(self):
         ctx = self.context

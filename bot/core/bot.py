@@ -1,3 +1,4 @@
+import ast
 import importlib
 import inspect
 import json
@@ -5,9 +6,11 @@ import logging
 import logging.handlers
 import os
 import traceback
+import inspect
 from datetime import datetime
 from textwrap import indent
-from typing import Callable, Literal, Optional
+from types import ModuleType
+from typing import Callable, Dict, List, Literal, Optional
 
 import aiohttp
 import discord
@@ -52,6 +55,8 @@ class amyrin(commands.Bot):
         self.color = (
             0x2F3136  # color used for embeds and whereever else it would be appropiate
         )
+        
+        self.module_relatives: Dict[str, List[str]] = {}
 
     @tasks.loop(hours=3)
     async def pfp_rotation(self):
@@ -140,6 +145,23 @@ class amyrin(commands.Bot):
 
                     self.logger.error(f"Error occured loading module {name}:\n{exc}")
                 else:
+                    source = inspect.getsource(imp)
+                    ast_tree = ast.parse(source)
+                    imports = [
+                        x.module if isinstance(x, ast.ImportFrom) else x.names[0].name
+                        for x in ast_tree.body if any(
+                            isinstance(x, i) for i in [ast.Import, ast.ImportFrom]
+                        )
+                    ]
+                    clean_imports = [
+                        x if not isinstance(x, ModuleType) else x.__name__
+                        for x in filter(
+                            lambda x: x is not None, imports
+                        ) if x.startswith("modules")
+                    ]
+                    
+                    self.module_relatives[name] = clean_imports
+                    
                     if hasattr(imp, "setup"):
                         try:
                             await self.load_extension(name)

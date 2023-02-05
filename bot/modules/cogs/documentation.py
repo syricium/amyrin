@@ -22,7 +22,7 @@ class Documentation(commands.Cog):
 
         self.scrapers = {"discord.py": DiscordScraper(self.bot.bcontext, bot)}
         recache: commands.Group = self.recache
-        recache.add_check(self._recache_check)
+        recache.add_check(self._recache_check(None))
         for command in recache.walk_commands():
             command.add_check(self._recache_check(command.name))
 
@@ -56,9 +56,9 @@ class Documentation(commands.Cog):
                         break
                     else:
                         if reaction.emoji == reactions[0]:
-                            return True
-                        return False
-                return False
+                            return True, msg
+                        return False, msg
+                return False, msg
 
             scraper = self.scrapers["discord.py"]
 
@@ -72,22 +72,34 @@ class Documentation(commands.Cog):
             }
 
             if command is None:
-                items = [x for x in cache_map.items() if not task.done()]
-                running = [name for name, (func, task) in items]
+                out = True
+                running = [name for name, v in cache_map.items() if not v[1].done()]
                 if len(running) == 1:
-                    out = await task_running(
-                        f"There {running[0]} startup caching task is not yet done, do you want to cancel it?"
+                    out, msg = await task_running(
+                        f"The {running[0]} startup caching task is not yet done, do you want to cancel it?"
                     )
                 elif running:
                     all_running = format_list(running, seperator="and", brackets="`")
-                    out = await task_running(
+                    out, msg = await task_running(
                         f"The {all_running} startup caching tasks are not yet done, do you want to cancel it?"
                     )
+                else:
+                    return True
 
-                if out:
+                try:
+                    await msg.delete()
+                except Exception:
+                    pass
+                
+                if out is False:
+                    return False
+                
+                if out is True: 
                     results: Dict[str, Optional[Exception]] = {}
 
-                    for name, (func, task) in items:
+                    for name, (func, task) in cache_map.items():
+                        if task.done():
+                            continue
                         try:
                             task.cancel()
                         except Exception as exc:
@@ -104,31 +116,40 @@ class Documentation(commands.Cog):
                         f"\N{WHITE HEAVY CHECK MARK} {name}"
                         if not error
                         else f"\N{WHITE HEAVY CHECK MARK} {name}\n```py\n{error}\n```"
+                        for name, error in results.items()
                     )
                     embed = discord.Embed(description=description, color=self.bot.color)
                     await ctx.send(embed=embed)
-                    return False
+                    return True
 
+        
             func, task = cache_map[command]
             task: asyncio.Task
 
             if not task.done():
-                out = await task_running(
+                out, msg = await task_running(
                     f"The {command} startup caching task is not yet done, do you want to cancel it?"
                 )
-                if out:
+                if not out:
                     try:
-                        task.cancel()
-                    except Exception as exc:
-                        error = "".join(
-                            traceback.format_exception(
-                                type(exc), exc, exc.__traceback__
-                            )
-                        )
-                        await ctx.send(f"Failed to cancel task:\n```py\n{error}\n```")
+                        await msg.delete()
+                    except Exception:
+                        pass
+                    finally:
                         return False
-                    else:
-                        await ctx.send("Successfully cancelled task")
+                    
+                try:
+                    task.cancel()
+                except Exception as exc:
+                    error = "".join(
+                        traceback.format_exception(
+                            type(exc), exc, exc.__traceback__
+                        )
+                    )
+                    await ctx.send(f"Failed to cancel task:\n```py\n{error}\n```")
+                    return False
+                else:
+                    await ctx.send("Successfully cancelled task")
 
             return True
 
@@ -154,42 +175,13 @@ class Documentation(commands.Cog):
             return self._message
 
         return updater
-    
-    @command(
-        commands.command,
-        name="update-scraper",
-        aliases=["us", "update-scrapers"],
-        description="Update all or the given scraper(s)",
-        examples=["{prefix}u"],
-        hidden=True,
-    )
-    @commands.is_owner()
-    async def update_scraper(self, ctx: commands.Context, scraper: str = None):
-        scraper_prefix = "modules.util.scraping.documentation."
-        scrapers = [
-            "discord_py"
-        ]
-        
-        def update_scraper(name: str):
-            imp = importlib.import_module(scraper_prefix + name)
-            class_ = getattr(imp, "DocScraper")
-            self.scrapers[scraper] = class_
-        
-        if not scraper:
-            for scraper in scrapers:
-                update_scraper(scraper)
-                
-            return await ctx.send("Updated all scrapers")
-        
-        scraper = self.scrapers[scraper]
-        update_scraper(scraper)
-        await ctx.send(f"Updated {scraper} documentation scraper")
 
     @command(
         commands.group,
         aliases=["rc"],
         description="Recache cached items",
         examples=["{prefix}recache"],
+        invoke_without_command=True,
         hidden=True,
     )
     @commands.is_owner()
@@ -251,13 +243,13 @@ class Documentation(commands.Cog):
 
     @command(
         recache.command,
-        name="rtfd",
-        description="Recache rtfd cache",
-        examples=["{prefix}recache rtfd"],
+        name="rtfs",
+        description="Recache rtfs cache",
+        examples=["{prefix}recache rtfs"],
         hidden=True,
     )
     @commands.is_owner()
-    async def recache_rtfd(self, ctx: commands.Context):
+    async def recache_rtfs(self, ctx: commands.Context):
         scraper = self.scrapers["discord.py"]
 
         updater = self._recache_updater(ctx)
@@ -302,11 +294,11 @@ class Documentation(commands.Cog):
     async def rtfm(
         self,
         ctx: commands.Context,
-        query: str = commands.param(
+        *, query: str = commands.param(
             description="The query you want to search for in the default (discord.py) documentation"
         ),
     ):
-        await self.rtfm_discord_py(ctx, query)
+        await self.rtfm_discord_py(ctx, query=query)
 
     @command(
         rtfm.command,
@@ -318,7 +310,7 @@ class Documentation(commands.Cog):
     async def rtfm_discord_py(
         self,
         ctx: commands.Context,
-        query: str = commands.param(
+        *, query: str = commands.param(
             description="The query you want to search for in the discord.py documentation"
         ),
     ):
@@ -333,28 +325,28 @@ class Documentation(commands.Cog):
     @command(
         commands.hybrid_group,
         description="Search the source code of a module",
-        examples=["{prefix}rtfm commands.bot"],
+        examples=["{prefix}rtfs commands.bot"],
     )
     async def rtfs(
         self,
         ctx: commands.Context,
-        query: str = commands.param(
+        *, query: str = commands.param(
             description="The query you want to search for in the default (discord.py) source code"
         ),
     ):
-        await self.rtfs_discord_py(ctx, query)
+        await self.rtfs_discord_py(ctx, query=query)
 
     @command(
         rtfs.command,
         name="latest",
         aliases=["dpy", "d.py"],
         description="Search the source code of discord.py",
-        examples=["{prefix}rtfm dpy commands.bot"],
+        examples=["{prefix}rtfs dpy commands.bot"],
     )
     async def rtfs_discord_py(
         self,
         ctx: commands.Context,
-        query: str = commands.param(
+        *, query: str = commands.param(
             description="The function or class you want to search for in the discord.py source code"
         ),
     ):
@@ -384,16 +376,16 @@ class Documentation(commands.Cog):
         commands.hybrid_group,
         aliases=["docs"],
         description="Get documentation of a module",
-        examples=["{prefix}rtfm commands.bot"],
+        examples=["{prefix}docs commands.bot"],
     )
     async def documentation(
         self,
         ctx: commands.Context,
-        query: str = commands.param(
+        *, query: str = commands.param(
             description="The query you want to search for in the default (discord.py) documentation"
         ),
     ):
-        await self.docs_discord_py(ctx, query)
+        await self.docs_discord_py(ctx, query=query)
 
     @command(
         documentation.command,
@@ -405,7 +397,7 @@ class Documentation(commands.Cog):
     async def docs_discord_py(
         self,
         ctx: commands.Context,
-        query: str = commands.param(
+        *, query: str = commands.param(
             description="The query you want to search for in the discord.py documentation"
         ),
     ):

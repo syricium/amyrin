@@ -1,3 +1,4 @@
+import importlib
 import os
 import pathlib
 import traceback
@@ -28,7 +29,7 @@ class HotReload(commands.Cog):
 
     @tasks.loop(seconds=1)
     async def hot_reload_loop(self):
-        for extension in list(self.bot.extensions.keys()):
+        for extension in self.bot.module_relatives.keys():
             if extension in IGNORE_EXTENSIONS:
                 continue
             path = path_from_extension(extension)
@@ -41,7 +42,8 @@ class HotReload(commands.Cog):
                 self.last_modified_time[extension] = time
             else:
                 try:
-                    await self.bot.reload_extension(extension)
+                    if extension in self.bot.extensions.keys():
+                        await self.bot.reload_extension(extension)
                 except commands.ExtensionError as exc:
                     exc = "".join(
                         traceback.format_exception(type(exc), exc, exc.__traceback__)
@@ -54,6 +56,10 @@ class HotReload(commands.Cog):
                     continue
                 else:
                     self.bot.logger.debug(f"Reloaded extension: {extension}")
+                    
+                    for relative, _ in filter(lambda x: extension in x[1], self.bot.module_relatives.items()):
+                        await self.bot.reload_extension(relative)
+                        self.bot.logger.debug(f"Reloaded {extension} relative: {relative}")
                 finally:
                     self.last_modified_time[extension] = time
 

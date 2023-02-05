@@ -11,13 +11,16 @@ class View(discord.ui.View):
         children = copy(self.children)
         for child in self.children:
             child.disabled = True
-        if isinstance(interaction, discord.Interaction):
-            if interaction.response.is_done():
-                await interaction.edit_original_response(view=self)
+        try:
+            if isinstance(interaction, discord.Interaction):
+                if interaction.response.is_done():
+                    await interaction.edit_original_response(view=self)
+                else:
+                    await interaction.response.edit_message(view=self)
             else:
-                await interaction.response.edit_message(view=self)
-        else:
-            await interaction.edit(view=self)
+                await interaction.edit(view=self)
+        except Exception:
+            pass
         return children
 
 

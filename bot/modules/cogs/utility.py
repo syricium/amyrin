@@ -132,6 +132,7 @@ class Utility(commands.Cog):
         examples=[
             "{prefix}cdn https://cdn.discordapp.com/attachments/381963689470984203/1068926488453332993/sQWxQyB.jpg"
         ],
+        hidden=True
     )
     @commands.is_owner()
     async def cdn_upload(

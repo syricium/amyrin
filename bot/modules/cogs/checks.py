@@ -14,7 +14,6 @@ class Checks(commands.Cog):
             return True
 
         if not await self.bot.is_owner(ctx.author) and ctx.author.id not in config.ALLOWED_ON_DEBUG:
-            print(ctx.author.id)
             prefix = await self.bot.get_formatted_prefix(False)
 
             await ctx.reply(
