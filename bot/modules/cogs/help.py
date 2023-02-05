@@ -27,6 +27,11 @@ class _HelpCommand(commands.HelpCommand):
             f"📝 Use {self.context.prefix}{self.invoked_with} [command]"
             "📝 for more info on a command"
         )
+        
+    def _can_view(self, command: commands.Command):
+        if self.context.bot.sync_is_owner(self.context.author):
+            return True
+        return not command.hidden
 
     async def send_bot_help(self, mapping, used=None):
         if used:
@@ -40,18 +45,14 @@ class _HelpCommand(commands.HelpCommand):
             name=self.context.bot.user.name, icon_url=self.context.bot.user.avatar.url
         )
 
-        if await self.context.bot.is_owner(self.context.author):
-            cogs: List[commands.Command] = [
-                c
-                for c in self.context.bot.cogs.values()
-                if len(list(c.walk_commands())) != 0
-            ]
-        else:
-            cogs: List[commands.Command] = [
-                c
-                for c in self.context.bot.cogs.values()
-                if sum(not m.hidden for m in c.get_commands()) != 0
-            ]
+        cogs: List[commands.Command] = [
+            c
+            for c in self.context.bot.cogs.values()
+            if all(
+                self._can_view(x)
+                for x in c.get_commands()
+            ) and len(c.get_commands()) > 0
+        ]
 
         fmt_cmds = sorted(
             cogs, key=lambda x: len(list(x.walk_commands())), reverse=True
@@ -64,6 +65,7 @@ class _HelpCommand(commands.HelpCommand):
                     name=f"{cog.qualified_name} [{len(cmds)}]",
                     value="\n".join(
                         f"• **{command.qualified_name}**" for command in cmds[:4]
+                        if self._can_view(command)
                     )
                     + "...",
                     inline=True,
@@ -74,10 +76,7 @@ class _HelpCommand(commands.HelpCommand):
 
     async def send_cog_help(self, cog):
         channel = self.get_destination()
-        if not await self.context.bot.is_owner(self.context.author):
-            commands_ = [cmd for cmd in cog.get_commands() if cmd.hidden is False]
-        else:
-            commands_ = [cmd for cmd in cog.get_commands()]
+        commands_ = [cmd for cmd in cog.get_commands() if self._can_view(cmd)]
 
         if commands_ is not None and commands_ != []:
             em = discord.Embed(
@@ -167,7 +166,7 @@ class _HelpCommand(commands.HelpCommand):
         if len(group.commands) > 0:
             em.add_field(
                 name=f"Subcommands [{len(group.commands)}]",
-                value="> " + ", ".join(f"`{cmd.name}`" for cmd in group.commands),
+                value="> " + ", ".join(f"`{cmd.name}`" for cmd in group.commands if self._can_view(cmd)),
                 inline=False,
             )
 
