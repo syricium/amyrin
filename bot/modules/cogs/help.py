@@ -40,13 +40,18 @@ class _HelpCommand(commands.HelpCommand):
             name=self.context.bot.user.name, icon_url=self.context.bot.user.avatar.url
         )
 
-        cogs: List[commands.Command] = [
-            c
-            for c in self.context.bot.cogs.values()
-            if sum(not m.hidden for m in c.get_commands()) != 0 if 
-            not await self.context.bot.is_owner(self.context.author)
-            else True
-        ]
+        if await self.context.bot.is_owner(self.context.author):
+            cogs: List[commands.Command] = [
+                c
+                for c in self.context.bot.cogs.values()
+                if len(list(c.walk_commands())) != 0
+            ]
+        else:
+            cogs: List[commands.Command] = [
+                c
+                for c in self.context.bot.cogs.values()
+                if sum(not m.hidden for m in c.get_commands()) != 0
+            ]
 
         fmt_cmds = sorted(
             cogs, key=lambda x: len(list(x.walk_commands())), reverse=True
