@@ -315,14 +315,13 @@ class DocScraper:
         results = []
 
         _, repo_url, repo_path = self._rtfs_repo
-        full_repo_url = repo_url + f"/tree/master"
 
         for item in self.strgcls._rtfs_cache:
             name = item.get("name")
             file = item.get("file")
             start, end = item.get("position")
 
-            file_url = urlparse(full_repo_url + file)._replace(
+            file_url = urlparse(repo_url + file)._replace(
                 fragment=f"L{start}-L{end}"
             )
 
