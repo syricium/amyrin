@@ -104,6 +104,10 @@ class Utility(commands.Cog):
         
         data = await resp.json()
         definitions = data["list"]
+        
+        if not definitions:
+            return await ctx.send(f"No definitions found for term `{term}`")
+        
         embeds: List[discord.Embed] = self._format_ud_definitions(definitions)
         
         await paginate(ctx, embeds, timeout=30)
