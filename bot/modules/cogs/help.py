@@ -60,14 +60,15 @@ class _HelpCommand(commands.HelpCommand):
 
         if cogs:
             for cog in fmt_cmds:
-                cmds = list(cog.walk_commands())
+                cmds = [command for command in list(cog.walk_commands()) if self._can_view(command)]
+                value = "\n".join(
+                    f"• **{command.qualified_name}**" for command in cmds[:4]
+                )
+                if len(cmds) > 4:
+                    value += "..."
                 em.add_field(
                     name=f"{cog.qualified_name} [{len(cmds)}]",
-                    value="\n".join(
-                        f"• **{command.qualified_name}**" for command in cmds[:4]
-                        if self._can_view(command)
-                    )
-                    + "...",
+                    value=value,
                     inline=True,
                 )
 
