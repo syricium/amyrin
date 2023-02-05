@@ -149,7 +149,7 @@ class Developer(commands.Cog, command_attrs={"hidden": True}):
 
         ref = None \
             if ctx.message.reference is None \
-            else ctx.message.reference.resolved,
+            else ctx.message.reference.resolved
         env = {
             "author": ctx.message.author,
             "bot": self.bot,
