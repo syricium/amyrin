@@ -526,15 +526,7 @@ class DocScraper:
         for name, manual in manuals:
             try:
                 documentations = await self._get_all_manual_documentations(manual)
-            except Exception as exc:
-                error = "".join(
-                    traceback.format_exception(type(exc), exc, exc.__traceback__)
-                )
-                self._logger.error(
-                    f'Error occured while trying to cache "{name}":\n{error}'
-                )
-                self.strgcls._docs_caching_progress[name] = error
-            else:
+                
                 if name not in results.keys():
                     results[name] = []
 
@@ -547,6 +539,14 @@ class DocScraper:
                     f"`{name}` documentation added to documentation cache",
                     "documentation",
                 )
+            except Exception as exc:
+                error = "".join(
+                    traceback.format_exception(type(exc), exc, exc.__traceback__)
+                )
+                self._logger.error(
+                    f'Error occured while trying to cache "{name}":\n{error}'
+                )
+                self.strgcls._docs_caching_progress[name] = error
 
         amount = sum(name in results.keys() for name, _ in manuals)
         await self.log(
