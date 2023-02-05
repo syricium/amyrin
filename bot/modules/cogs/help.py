@@ -48,7 +48,7 @@ class _HelpCommand(commands.HelpCommand):
         cogs: List[commands.Command] = [
             c
             for c in self.context.bot.cogs.values()
-            if all(
+            if any(
                 self._can_view(x)
                 for x in c.get_commands()
             ) and len(c.get_commands()) > 0
@@ -77,18 +77,22 @@ class _HelpCommand(commands.HelpCommand):
 
     async def send_cog_help(self, cog):
         channel = self.get_destination()
-        commands_ = [cmd for cmd in cog.get_commands() if self._can_view(cmd)]
+        
+        if not cog.get_commands():
+            return await channel.send("This cog is empty.")
+        
+        cmds = [cmd for cmd in cog.get_commands() if self._can_view(cmd)]
+        
+        if not cmds:
+            await channel.send("You don't have permission to view this cog.")
 
-        if commands_ is not None and commands_ != []:
-            em = discord.Embed(
-                title=f"{cog.qualified_name} commands [{len(commands_)}]",
-                description=f"{cog.description}\n\n> "
-                + ", ".join(f"`{cmd.name}`" for cmd in commands_),
-                color=self.context.bot.color,
-            )
-            await channel.send(embed=em)
-        else:
-            await channel.send("You do not have permission to view this cog")
+        em = discord.Embed(
+            title=f"{cog.qualified_name} commands [{len(commands_)}]",
+            description=f"{cog.description}\n\n> "
+            + ", ".join(f"`{cmd.name}`" for cmd in cmds),
+            color=self.context.bot.color,
+        )
+        await channel.send(embed=em)
 
     async def send_group_help(self, group):
         channel = self.get_destination()
