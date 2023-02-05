@@ -43,7 +43,10 @@ class _HelpCommand(commands.HelpCommand):
         cogs: List[commands.Command] = [
             c
             for c in self.context.bot.cogs.values()
-            if sum(not m.hidden for m in c.get_commands()) != 0
+            if (
+                sum(not m.hidden for m in c.get_commands()) != 0 and
+                await self.context.bot.is_owner(self.context.author)
+            )
         ]
 
         fmt_cmds = sorted(
