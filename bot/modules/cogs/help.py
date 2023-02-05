@@ -45,7 +45,7 @@ class _HelpCommand(commands.HelpCommand):
             for c in self.context.bot.cogs.values()
             if (
                 sum(not m.hidden for m in c.get_commands()) != 0 and
-                await self.context.bot.is_owner(self.context.author)
+                not await self.context.bot.is_owner(self.context.author)
             )
         ]
 
