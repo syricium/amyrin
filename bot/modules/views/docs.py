@@ -127,6 +127,9 @@ class DocView(View):
 
         docs = await self.scraper.get_documentation(name, updater=update)
 
+        if docs is None:
+            return await self._send(interaction, "Could not find element.")
+
         examples_button: discord.ui.Button = discord.utils.get(
             self.children, custom_id="show_ex"
         )
