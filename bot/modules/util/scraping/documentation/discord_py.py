@@ -124,7 +124,7 @@ class DocScraper:
         self._browser = browser
         self._bot = bot
 
-        self._base_url = "https://dpy.rtd.0a3.cc/"
+        self._base_url = "https://dpy.rtd.amyr.in/"
         self._inv_url = urljoin(self._base_url, "objects.inv")
 
         self.strgcls._docs_cache: List[Documentation]
@@ -146,7 +146,7 @@ class DocScraper:
 
         self._rtfs_repo = (
             "discord.py",
-            "https://dpy.gh.0a3.cc",
+            "https://dpy.gh.amyr.in",
             "discord",
         )
 
