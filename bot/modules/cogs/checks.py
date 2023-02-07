@@ -1,7 +1,7 @@
 from discord.ext import commands
 
 from core.bot import amyrin
-import config #type: ignore
+import config
 
 class Checks(commands.Cog):
     def __init__(self, bot):
@@ -12,6 +12,9 @@ class Checks(commands.Cog):
     async def debug_check(self, ctx: commands.Context):
         if not self.bot.debug:
             return True
+        
+        if self.bot.debug and ctx.interaction:
+            return False
 
         if not await self.bot.is_owner(ctx.author) and ctx.author.id not in config.ALLOWED_ON_DEBUG:
             prefix = await self.bot.get_formatted_prefix(False)
@@ -20,8 +23,6 @@ class Checks(commands.Cog):
                 "You are trying to use the debug version of the bot, which only my owner can, "
                 f"the prefix of the stable version is {prefix} (ex: {prefix} help)"
             )
-            return False
-        elif ctx.interaction:
             return False
 
         return True

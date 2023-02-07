@@ -87,7 +87,7 @@ class _HelpCommand(commands.HelpCommand):
             await channel.send("You don't have permission to view this cog.")
 
         em = discord.Embed(
-            title=f"{cog.qualified_name} commands [{len(commands_)}]",
+            title=f"{cog.qualified_name} commands [{len(cmds)}]",
             description=f"{cog.description}\n\n> "
             + ", ".join(f"`{cmd.name}`" for cmd in cmds),
             color=self.context.bot.color,

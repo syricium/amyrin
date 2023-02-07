@@ -11,9 +11,10 @@ import magic
 from discord.ext import commands
 
 from .base import execute
-from .exceptions import MediaException, MissingNginxHandler, NoPartsException, InvalidFormat, AgeLimited
+from .exceptions import AgeLimited, MediaException, MediaServerException, MissingNginxHandler, NoPartsException, InvalidFormat, ValidityCheckFailed
 from .compressor import Compressor, CompressionResult
 from dataclasses import dataclass
+import config
 from modules.util.handlers.nginx import NginxHandler
 
 @dataclass(frozen=True)
@@ -40,8 +41,7 @@ class Downloader:
         output: os.PathLike,
         nginx: NginxHandler = None,
         format: str = "mp4",
-        age_limit: Optional[int] = 18,
-        compress: bool = True,
+        compress: bool = False,
         close_after: bool = False,
         verbose: bool = False,
         updater: Callable = None,
@@ -49,10 +49,6 @@ class Downloader:
         self._url_regex = re.compile(
             r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"
         )
-        self._platforms = {
-            "youtube": {"nsfw": False, "check": None},
-            "tiktok": {"nsfw": False, "check": None},
-        }
 
         self.formats = {
             "mp4": {"aliases": ["video"]},
@@ -62,7 +58,6 @@ class Downloader:
         self._interaction = interaction
         self._url = url
         self._format = format.lower()
-        self._age_limit = age_limit
         self._compress = compress
         self._output = output
         self._close_after = close_after
@@ -113,33 +108,13 @@ class Downloader:
         out = await execute(f"yt-dlp -j -q \"{self._url}\"")
         return json.loads(out)
 
-    async def _check_validity(self) -> bool:
+    async def _check_validity(self, age_limit: int = 18) -> bool:
         data = await self._extract_info()
 
-        if self._age_limit:
-            age_limit = data.get("age_limit")
-            
-            if age_limit >= self._age_limit:
+        if age_limit:
+            if data.get("age_limit") >= age_limit:
                 raise AgeLimited
-
-        extractor = data.get("extractor", "").lower()
-
-        try:
-            item = self._platforms[extractor]
-        except KeyError:
-            return MediaException("Passed URL is not supported.")
-
-        item_nsfw = item.get("nsfw")
-        item_check = item.get("check")
-
-        if item_nsfw is True and not self._interaction.channel.is_nsfw():
-            return MediaException(
-                "Passed URL is for an NSFW platform, and can therefore only be used in NSFW marked channels."
-            )
-
-        if item_check is not None and callable(item_check):
-            item_check(self._interaction, self._url)
-
+        
         return True
     
     async def _update(self, message: str):
@@ -218,12 +193,12 @@ class Downloader:
         
         return await self._nginx.add(path)
 
-    async def download(self) -> FileDownload | URLDownload:
+    async def download(self, age_limit: int = 18) -> FileDownload | URLDownload:
         if not self._url_regex.match(self._url):
-            return MediaException("URL isn't a valid URL"), False
+            raise MediaException("URL isn't a valid URL")
 
-        if (out := await self._check_validity()) is not True:
-            return {"error": out}
+        if (out := await self._check_validity(age_limit=age_limit)) is not True:
+            raise ValidityCheckFailed(out)
 
         typename = (
             "video"

@@ -21,9 +21,10 @@ from discord.ext.commands import Greedy
 from playwright.async_api import async_playwright
 from playwright.async_api._generated import Browser
 
-import config #type: ignore
+import config
 from core.context import Context
 from modules.util.documentation.parser import DocParser
+from modules.util.handlers.nginx import NginxHandler
 
 class amyrin(commands.Bot):
     def __init__(self, *args, **kwargs) -> commands.Bot:
@@ -54,6 +55,11 @@ class amyrin(commands.Bot):
 
         self.color = (
             0x2F3136  # color used for embeds and whereever else it would be appropiate
+        )
+        
+        self.nginx = NginxHandler(
+            url=config.Nginx.url,
+            path=config.Nginx.path
         )
         
         self.module_relatives: Dict[str, List[str]] = {}

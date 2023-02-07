@@ -25,6 +25,12 @@ from modules.util.executor import executor
 from modules.util.timer import Timer
 
 
+class FailedCachingTask(Exception):
+    def __init__(self, name: str, exception: Exception, task: asyncio.Task) -> None:
+        self.name = name
+        self.exception = exception
+        self.task = task
+
 class Response:
     def __bool__(self):
         return any(
@@ -420,14 +426,14 @@ class DocScraper:
             for supported_operation in supported_operations.findChildren("dl", class_="describe"):
                 operation = supported_operation \
                     .find("span", class_="descname") \
-                    .text
+                    .text.strip()
                 desc = self._get_text(
                     supported_operation.find("dd", recursive=False), parsed_url
-                )
+                ).strip()
                 items.append((operation, desc))
                 
             if items:
-                fields["Supported Operations"] = "\n\n".join(
+                fields["Supported Operations"] = "\n".join(
                     f"> {operation}\n{desc}"
                     for operation, desc in items
                 )
@@ -671,11 +677,20 @@ class DocScraper:
         exclude_std: bool = False,
         updater: Callable = None,
     ) -> SearchResults:
+        if not self.strgcls._rtfm_caching_task.done():
+            await self.update(updater, "Waiting for RTFM caching to be done")
+            await self.strgcls._rtfm_caching_task
+            
+        if self.strgcls._rtfm_caching_task.exception() and self.strgcls._inv is None:
+            
+            
+            raise FailedCachingTask(
+                "rtfm",
+                self.strgcls._rtfm_caching_task.exception(),
+                self.strgcls._rtfm_caching_task
+            )
+                
         with Timer() as timer:
-            if not self.strgcls._rtfm_caching_task.done():
-                await self.update(updater, "Waiting for RTFM caching to be done")
-                await self.strgcls._rtfm_caching_task
-
             # implement task error handling later
 
             def get_name(obj: DataObjStr) -> str:

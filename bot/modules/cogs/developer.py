@@ -170,8 +170,6 @@ class Developer(commands.Cog, command_attrs={"hidden": True}):
             "rf": ref
         }
 
-        env.update(sys.modules.items())
-
         """ Code Parsing """
 
         try:

@@ -1,3 +1,4 @@
+import json
 import math
 import random
 import string
@@ -170,21 +171,31 @@ class DocView(View):
         def format_attribute(name: str, url: str):
             return f"[{name}]({url})"
         
+        def comprehend_attributes(attributes: List[str]) -> str:
+            formatted_attributes = [format_attribute(name, url) for name, url in attributes]
+            return "\n".join(f"> {attribute}" for attribute in formatted_attributes[:limit])
+        
         embeds = []
         
         for name, attributes in self._current.attributes.items():
             limit = 4096 # maximum embed description limit
-            amount = math.ceil(len(attributes) / limit) # calculate amount of embeds
+            attrs = []
             
-            formatted_attributes = [format_attribute(name, url) for name, url in attributes]
-            for _ in range(amount):
+            for attribute in attributes:
+                if not attrs:
+                    attrs.append([])
+                new_attrs = attrs[-1] + [attribute]
+                new_text = comprehend_attributes(new_attrs)
+                if len(new_text) > limit:
+                    attrs.append([])
+                attrs[-1].append(attribute)
+                
+            for attrs in attrs:
                 embed = discord.Embed(
                     title=name.title(),
-                    description="\n".join(f"> {attribute}" for attribute in formatted_attributes[:limit]),
-                    color=self._color
+                    description="\n".join(format_attribute(name, url) for name, url in attrs)
                 )
                 embeds.append(embed)
-                formatted_attributes = formatted_attributes[:-limit]
             
         await paginate(interaction, embeds=embeds, ephemeral=True)
         #await interaction.response.send_message(embed=embed, ephemeral=True)

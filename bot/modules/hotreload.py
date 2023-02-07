@@ -35,6 +35,9 @@ class HotReload(commands.Cog):
             path = path_from_extension(extension)
             time = os.path.getmtime(path)
 
+            if extension not in self.bot.extensions.keys():
+                continue
+
             try:
                 if self.last_modified_time[extension] == time:
                     continue
@@ -42,8 +45,7 @@ class HotReload(commands.Cog):
                 self.last_modified_time[extension] = time
             else:
                 try:
-                    if extension in self.bot.extensions.keys():
-                        await self.bot.reload_extension(extension)
+                    await self.bot.reload_extension(extension)
                 except commands.ExtensionError as exc:
                     exc = "".join(
                         traceback.format_exception(type(exc), exc, exc.__traceback__)

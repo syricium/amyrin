@@ -1,12 +1,5 @@
-class MediaException:
-    def __init__(self, message: str) -> None:
-        self.message = message
-
-    def __str__(self) -> str:
-        return self.message
-    
-    def __repr__(self) -> str:
-        return f"<MediaException error=\"{self.__str__()}\">"
+class MediaException(Exception):
+    pass
 
 
 class InvalidFormat(Exception):
@@ -25,6 +18,9 @@ class MissingNginxHandler(Exception):
     pass
     
 class MediaServerException(Exception):
+    pass
+
+class ValidityCheckFailed(Exception):
     pass
 
 class AgeLimited(Exception):
