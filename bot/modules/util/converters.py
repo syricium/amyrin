@@ -3,6 +3,7 @@ import os
 import re
 from io import BufferedIOBase, BytesIO
 from typing import Any
+from urllib.parse import urlparse
 
 import aiohttp
 import discord
@@ -84,6 +85,17 @@ class URLObject:
             BytesIO(await self.read(session=session)), self.name, spoiler=False
         )
 
+class URLConverter(commands.Converter):
+    async def convert(
+        self, ctx: commands.Context | discord.Interaction, argument: str
+    ) -> str:
+        parsed_url = urlparse(argument)
+        
+        if parsed_url.netloc in ("127.0.0.1", "localhost", "0.0.0.0") \
+            and not await ctx.bot.is_owner(ctx.author):
+            raise commands.BadArgument("Invalid URL")
+        
+        return argument
 
 class FileConverter(commands.Converter):
     async def convert(

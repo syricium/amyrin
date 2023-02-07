@@ -12,8 +12,7 @@ import humanfriendly
 from discord.ext import commands
 
 from core.bot import amyrin
-from modules.util.converters import FileConverter, URLObject, format_list
-from modules.util.executor import executor
+from modules.util.converters import FileConverter, URLObject, format_list, URLConverter
 from modules.util.media.exceptions import AgeLimited, FailedCompressionException, InvalidFormat, MediaException, ValidityCheckFailed
 from modules.views.song import SongView
 from urllib.parse import quote_plus
@@ -335,7 +334,14 @@ class Utility(commands.Cog):
     )
     @commands.cooldown(1, 15, commands.BucketType.user)
     @commands.max_concurrency(1, commands.BucketType.user)
-    async def download(self, ctx, url: str = commands.param(), flags: DownloadFlags = None):
+    async def download(
+        self, ctx,
+        url: str = commands.param(
+            description="The URL for the video or audio you want to download",
+            converter=URLConverter
+        ),
+        flags: DownloadFlags = None
+    ):
         format = "mp4" if not flags else flags.format
         compress = False if not flags else flags.compress
         
