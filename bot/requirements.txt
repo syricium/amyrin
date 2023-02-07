@@ -17,3 +17,4 @@ sphobjinv==2.3.1
 lxml==4.9.2
 python-magic==0.4.27
 nudenet==2.0.9
+yt-dlp==2023.1.6
