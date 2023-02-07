@@ -16,6 +16,7 @@ from .compressor import Compressor, CompressionResult
 from dataclasses import dataclass
 import config
 from modules.util.handlers.nginx import NginxHandler
+from core.constants import *
 
 @dataclass(frozen=True)
 class FileDownload:
@@ -112,7 +113,7 @@ class Downloader:
         data = await self._extract_info()
 
         if age_limit:
-            if data.get("age_limit") >= age_limit:
+            if data.get("age_limit", 0) >= age_limit:
                 raise AgeLimited
         
         return True
@@ -196,6 +197,8 @@ class Downloader:
     async def download(self, age_limit: int = 18) -> FileDownload | URLDownload:
         if not self._url_regex.match(self._url):
             raise MediaException("URL isn't a valid URL")
+        
+        await self._update(f"{LOADING} Checking validity")
 
         if (out := await self._check_validity(age_limit=age_limit)) is not True:
             raise ValidityCheckFailed(out)
