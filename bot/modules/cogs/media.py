@@ -240,15 +240,6 @@ class Media(commands.Cog):
                     return await update("Output file is too big.")
 
                 path = download.path
-            elif isinstance(file, discord.Attachment):
-                await update(content="Downloading file...")
-                parsed_url = urlparse(file.url)
-                path = os.path.join(temp_dir.name, parsed_url.path.split("/")[-1])
-                data = await file.read()
-                if len(data) > 134217728:
-                    return await update("File cannot be over 128MB.")
-                    
-                await file.save(path)
             else:
                 await update(content="Downloading file...")
                 path = os.path.join(temp_dir.name, "song.mp3")
@@ -257,6 +248,15 @@ class Media(commands.Cog):
                     return await update("File cannot be over 128MB.")
                 
                 await file.save(path, data=data)
+        elif isinstance(file, discord.Attachment):
+            await update(content="Downloading file...")
+            parsed_url = urlparse(file.url)
+            path = os.path.join(temp_dir.name, parsed_url.path.split("/")[-1])
+            data = await file.read()
+            if len(data) > 134217728:
+                return await update("File cannot be over 128MB.")
+                    
+            await file.save(path)
             
         await update(content="Now processing request...")
 
