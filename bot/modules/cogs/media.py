@@ -296,10 +296,9 @@ class Media(commands.Cog):
         
         description = textwrap.dedent(
             f"""
-            **Title:** {title}
-            **Artist:** {artist}
-            **Genres:** {formatted_genres}
-            """.strip()
+**Title:** {title}
+**Artist:** {artist}
+**Genres:** {formatted_genres}""".strip()
         )
 
         embed = discord.Embed(
