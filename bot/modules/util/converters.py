@@ -54,18 +54,18 @@ class URLObject:
                 await _session.close()
 
     async def save(
-        self, fp: BufferedIOBase | os.PathLike[Any], *, seek_begin: bool = True
+        self, fp: BufferedIOBase | os.PathLike[Any], *, data: bytes = None, seek_begin: bool = True
     ) -> int:
         """Saves to an object or buffer."""
-        data = await self.read()
+        data = data or await self.read()
         if isinstance(fp, BufferedIOBase):
             written = fp.write(data)
             if seek_begin:
                 fp.seek(0)
             return written
-        else:
-            with open(fp, "wb") as f:
-                return f.write(data)
+        
+        with open(fp, "wb") as f:
+            return f.write(data)
 
     @property
     def spoiler(self):

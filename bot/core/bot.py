@@ -1,10 +1,13 @@
 import ast
+import asyncio
 import importlib
 import inspect
 import json
 import logging
 import logging.handlers
 import os
+import random
+import string
 import traceback
 import inspect
 from datetime import datetime
@@ -41,7 +44,6 @@ class amyrin(commands.Bot):
         )
         self.logger = None  # logging.Logger instance, later defined in self.startup
         self.expr_states = {}  # expr.py states, in use in modules.util.views.calculator
-        self.eval_tasks = {}
 
         self.playwright = None  # playwright instance, later defined in self.setup_hook
         self.browser: Browser = (
@@ -61,6 +63,8 @@ class amyrin(commands.Bot):
             url=config.Nginx.url,
             path=config.Nginx.path
         )
+        
+        self.command_tasks: Dict[str, dict] = {}
         
         self.module_relatives: Dict[str, List[str]] = {}
 
@@ -116,16 +120,8 @@ class amyrin(commands.Bot):
 
     async def on_connect(self) -> None:
         self.logger.info("Connected to discord gateway")
-
-    async def setup_hook(self) -> None:
-        discord.utils.setup_logging()
-        self.pfp_rotation.start()
-
-        self.session = aiohttp.ClientSession()
-        self.playwright = await async_playwright().start()
-        self.browser = await self.playwright.chromium.launch()
-        self.bcontext = await self.browser.new_context()
-
+        
+    async def load_extensions(self) -> None:
         rootdir = os.getcwd()
         direc = os.path.join(rootdir, "modules")
         for root, _, files in os.walk(direc):
@@ -184,11 +180,69 @@ class amyrin(commands.Bot):
                         else:
                             self.logger.info(f"Succesfully loaded module {name}")
 
+    async def setup_hook(self) -> None:
+        discord.utils.setup_logging()
+        self.pfp_rotation.start()
+
+        self.session = aiohttp.ClientSession()
+        self.playwright = await async_playwright().start()
+        self.browser = await self.playwright.chromium.launch()
+        self.bcontext = await self.browser.new_context()
+                            
+        await self.load_extensions()
+        await self.update_command_callbacks()
+
     async def on_message(self, message: discord.Message) -> None:
         if message.author.bot:
             return
 
         await self.process_commands(message)
+        
+    def _generate_ct_name(self, command_name: str):
+        for _ in range(100):
+            id_part = "".join(random.choices(
+                string.digits, k=5
+            ))
+            name = command_name.replace(" ", "-") + "-" + id_part
+            
+            if name not in self.command_tasks.keys():
+                return name
+            
+        raise RecursionError("maximum command task name generation error recursion limit reached") 
+        
+    def _create_callback(self, command: commands.Command):
+        command._original_callback = command.callback
+        
+        async def callback(cog, *args, **kwargs):
+            ctx = args[0]
+            command: commands.Command = ctx.command
+            cb = command._original_callback
+            
+            task = asyncio.create_task(cb(cog, *args, **kwargs))
+            name = self._generate_ct_name(command.qualified_name)
+            obj = {
+                "user": ctx.author.id,
+                "task": task,
+                "created": datetime.utcnow()
+            }
+            self.command_tasks[name] = obj
+            ctx._task_name = name
+            
+            def done_callback(result: asyncio.Future):
+                try:
+                    if not result.exception():
+                        self.command_tasks.pop(name, None)
+                except asyncio.CancelledError:
+                    self.command_tasks.pop(name, None)
+                
+            task.add_done_callback(done_callback)
+            return await task
+        
+        return callback
+        
+    async def update_command_callbacks(self):
+        for command in self.walk_commands():
+            command._callback = self._create_callback(command)
 
     async def on_ready(self) -> None:
         info = {

@@ -24,32 +24,7 @@ from modules.views.paginator import WrapList, paginate
 from modules.views.pull import PullView
 
 from . import *
-
-
-class Updater:
-    def __init__(self, context: commands.Context):
-        super().__init__()
-        self.ctx = context
-        self.message = context.message
-        self.running = True
-        self.loop = asyncio.get_running_loop()
-        self.task = None
-
-    async def queue(self, delay: float, coro, *args, **kwargs):
-        await asyncio.sleep(delay)
-        if not self.running:
-            return
-        return await coro(*args, **kwargs)
-
-    async def __aenter__(self):
-        self.task = self.loop.create_task(self.queue(1, self.message.add_reaction, "▶"))
-        return self
-
-    async def __aexit__(self, _type, val, tb):
-        if self.task:
-            self.task.cancel()
-        self.running = False
-        await self.message.add_reaction("\N{WHITE HEAVY CHECK MARK}")
+from modules.util.updater import Updater
 
 
 class Developer(commands.Cog, command_attrs={"hidden": True}):
@@ -130,12 +105,6 @@ class Developer(commands.Cog, command_attrs={"hidden": True}):
         invoke_without_command=True,
     )
     async def _eval(self, ctx, *, code: codeblock_converter):
-        def gen_eval_name():
-            while True:
-                name = "".join(random.choices(string.ascii_lowercase, k=6))
-                if name not in self.bot.eval_tasks.keys():
-                    return name
-
         async def handle_async_generator(func: AsyncGenerator):
             async for i in func():
                 if i is not None:
@@ -187,15 +156,9 @@ class Developer(commands.Cog, command_attrs={"hidden": True}):
                 exec(code, env)
                 func = env.get("func")
                 if inspect.isasyncgenfunction(func):
-                    task = asyncio.create_task(handle_async_generator(func))
+                    await handle_async_generator(func)
                 else:
-                    task = asyncio.create_task(func())
-                eval_name = gen_eval_name()
-                self.bot.eval_tasks[eval_name] = (task, datetime.utcnow())
-                task.add_done_callback(
-                    lambda result: self.bot.eval_tasks.pop(eval_name, None)
-                )
-                await task
+                    await func()
             except Exception as exc:
                 result = "".join(
                     traceback.format_exception(type(exc), exc, exc.__traceback__)
@@ -203,93 +166,6 @@ class Developer(commands.Cog, command_attrs={"hidden": True}):
 
         if result is not None and len(str(result.strip())) > 0:
             await self.send(ctx, result)
-
-    @command(
-        _eval.command,
-        name="cancel",
-        aliases=["c"],
-        examples=["{prefix}eval cancel ffasbl"],
-        permissions=CommandPermissions(template=PermissionTemplates.text_command),
-    )
-    async def cancel_eval(self, ctx: commands.Context, name: str):
-        name = name.lower()
-
-        if name == "all":
-            if not self.bot.eval_tasks:
-                return await ctx.send("There is no eval tasks currently running")
-
-            results: Dict[str, Optional[Exception]] = {}
-
-            for name, (task, time) in self.bot.eval_tasks.items():
-                if task.cancelling() or task.done():
-                    continue
-
-                try:
-                    task.cancel()
-                except Exception as exc:
-                    error = "".join(
-                        traceback.format_exception(type(exc), exc, exc.__traceback__)
-                    )
-                    results[name] = error
-                else:
-                    results[name] = None
-
-            embed = discord.Embed(
-                description="\n".join(
-                    f"\N{WHITE HEAVY CHECK MARK} `{name}`"
-                    if not error
-                    else f"\N{CROSS MARK} `{name}`\n```py\n{error}\n```"
-                    for name, error in results.items()
-                ),
-                color=self.bot.color,
-            )
-
-            return await ctx.send(embed=embed)
-
-        if not self.bot.eval_tasks.get(name):
-            return await ctx.send(f"Eval task does not exist")
-
-        task, time = self.bot.eval_tasks[name]
-        task: asyncio.Task
-
-        if task.done():
-            return await ctx.send("Task is already completed")
-
-        if task.cancelling():
-            return await ctx.send("Task is already cancelling")
-
-        async with Updater(ctx):
-            task.cancel()
-        self.bot.eval_tasks.pop(name, None)
-
-        await ctx.send(f"Successfully cancelled task")
-
-    @command(
-        _eval.command,
-        name="tasks",
-        aliases=["t", "l"],
-        examples=["{prefix}eval tasks"],
-        permissions=CommandPermissions(template=PermissionTemplates.text_command),
-    )
-    async def eval_tasks(self, ctx: commands.Context):
-        if not self.bot.eval_tasks:
-            return await ctx.send("There is no eval tasks currently running")
-
-        tasks: Dict[str, Dict[asyncio.Task, datetime]] = self.bot.eval_tasks.items()
-        wrapped_tasks = WrapList([(key, *value) for key, value in tasks], length=6)
-
-        embeds = [
-            discord.Embed(
-                description="\n".join(
-                    f"`{name}` invoked at {discord.utils.format_dt(time, 'F')}"
-                    for name, task, time in tasks
-                ),
-                color=self.bot.color,
-            )
-            for tasks in wrapped_tasks
-        ]
-
-        await paginate(ctx, embeds, timeout=30)
 
     @command(
         commands.command,

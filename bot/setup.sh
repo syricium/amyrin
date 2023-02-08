@@ -28,6 +28,10 @@ python3.11 -m playwright install-deps
 mkdir -p ~/.config/systemd/user
 sudo mv bot.service ~/.config/systemd/user/bot.service
 
+wget -qO- 'http://keyserver.ubuntu.com/pks/lookup?op=get&search=0x6888550b2fc77d09' | sudo tee /etc/apt/trusted.gpg.d/songrec.asc
+sudo apt-add-repository ppa:marin-m/songrec -y -u
+sudo apt install songrec -y
+
 echo "Script is done running, if you have run the web's setup.sh script already, please remove" \
 "sudo privileges from the user running the bot"
 echo "Note: If you get \"Failed to connect to bus: Permission denied\" when trying to run systemctl --user," \

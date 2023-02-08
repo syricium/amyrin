@@ -1,27 +1,20 @@
 from datetime import datetime
-import json
-import os
 from io import BytesIO
-import random
 import re
-import tempfile
-import traceback
 import discord
 import humanfriendly
 
 from discord.ext import commands
 
 from core.bot import amyrin
-from modules.util.converters import FileConverter, URLObject, format_list, URLConverter
-from modules.util.media.exceptions import AgeLimited, FailedCompressionException, InvalidFormat, MediaException, ValidityCheckFailed
+from modules.util.converters import FileConverter, URLObject
+from modules.util.updater import Updater
 from modules.views.song import SongView
 from urllib.parse import quote_plus
-from modules.views.paginator import paginate
+from modules.views.paginator import WrapList, paginate
 from modules.util.handlers.nginx import NginxHandlerExceededSizeLimit, NginxHandlerException
-from modules.util.media.downloader import Downloader, FileDownload, URLDownload
 
 from . import *
-from .flags import DownloadFlags
 
 URBAN_DICTIONARY_HYPERLINK_REGEX = r"\[([^\]]+)\]"
 URBAN_DICTIONARY_API_URL = "https://api.urbandictionary.com/v0/define"
@@ -32,124 +25,6 @@ class Utility(commands.Cog):
     def __init__(self, bot):
         super().__init__()
         self.bot: amyrin = bot
-        
-    async def _process_download(self, ctx, url: str, format: str, compress: bool):
-        if isinstance(ctx, discord.Interaction):
-            ctx = await self.bot.get_context(ctx.message)
-
-        if ctx.interaction:
-            await ctx.interaction.response.defer()
-
-        ctx.msg = None
-
-        async def update(message: str):
-            if ctx.interaction:
-                if not ctx.interaction.response.is_done():
-                    return await ctx.interaction.follow.send(message)
-                return await ctx.interaction.edit_original_response(content=message)
-            else:
-                if not ctx.msg:
-                    ctx.msg = await ctx.reply(message)
-                else:
-                    await ctx.msg.edit(content=message)
-
-        nginx = self.bot.nginx
-
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            try:
-                downloader = Downloader(
-                    ctx,
-                    url,
-                    output=tmp_dir,
-                    nginx=nginx,
-                    format=format,
-                    updater=update,
-                    compress=compress
-                )
-            except InvalidFormat as exc:
-                valid_formats = []
-                for format, data in exc.valid_formats.items():
-                    valid_formats.append(format)
-                    for alias in data.get("aliases", []):
-                        valid_formats.append(alias)
-
-                fmt_formats = format_list(
-                    valid_formats, seperator="and", brackets="`"
-                )
-                return await update(
-                    f"Invalid format passed, valid formats are {fmt_formats}"
-                )
-
-            try:
-                result = await downloader.download(
-                    age_limit=18 if not ctx.channel.is_nsfw() else None
-                )
-            except FailedCompressionException:
-                return await update(
-                    "Failed to compress output file, please try running the command again in a server with a higher filesize limit (through server boosts)."
-                )
-            except ValidityCheckFailed as exc:
-                return await update(str(exc))
-            except NginxHandlerExceededSizeLimit as exc:
-                limit = humanfriendly.format_size(nginx._limit, binary=True)
-                size = humanfriendly.format_size(exc.size, binary=True)
-                exceeded = humanfriendly.format_size(exc.exceeded, binary=True)
-                return await update(f"Download ({size}) exceeds nginx server's filesize limit ({limit}) by {exceeded}.")
-            except MediaException as exc:
-                return await update(str(exc))
-            except AgeLimited:
-                return await update("This video is not able to be downloaded, as it exceeds the maximum age limit.")
-            except json.JSONDecodeError as exc:
-                if random.randint(1,1000) == 591:
-                    reason = "of gas leak!?!??!?"
-                else:
-                    reason = "the URL is not supported by yt-dlp."
-                return await update(f"Failed to parse validity checking result. This might be because {reason}")
-
-            compressed: bool = result.compressed
-            content_type_converted: bool = result.content_type_converted
-            sizes = result.sizes
-
-            content = []
-
-            if compressed:
-                old_size = sizes.get("old")
-                new_size = sizes.get("new")
-
-                fmt_old_size = humanfriendly.format_size(old_size)
-                fmt_new_size = humanfriendly.format_size(new_size)
-
-                compressed_by = 100 * (old_size - new_size) / old_size
-
-                compression_time = result.compression_time
-                fmt_compression_time = humanfriendly.format_timespan(compression_time)
-
-                content.append(
-                    f"✅ Output compression ratio was `{int(compressed_by)}%` and the compression took {fmt_compression_time} (old: `{fmt_old_size}` | new: `{fmt_new_size}`)"
-                )
-
-            if content_type_converted:
-                content.append(
-                    "❗️ Mimetype of output file was different to the desired output, this might be because the file didn't contain the necessary streams for the desired output"
-                )
-
-            if isinstance(result, FileDownload):
-                content = None
-                attachments = [discord.File(result.path)]#
-            elif isinstance(result, URLDownload):
-                content = result.url
-                attachments = []
-
-            if ctx.interaction:
-                await ctx.interaction.edit_original_response(
-                    content=content,
-                    attachments=attachments,
-                )
-            else:
-                await ctx.msg.edit(
-                    content=content,
-                    attachments=attachments,
-                )
     
     def _format_ud_hyperlink(self, term: str):
         formatted_term = quote_plus(term)
@@ -322,31 +197,116 @@ class Utility(commands.Cog):
             await ctx.send(f"File {name} could not be found.")
         else:
             await ctx.send(f"Successfully deleted file `{name}`.")
-            
+        
     @command(
         commands.command,
-        name="download",
-        aliases=["dl"],
-        description="Download a video or audio from a yt-dlp supported source.",
+        name="wait",
+        description="Literally just waits. Good for testing the `task cancel` command.",
+        aliases=[
+          "fIPASDHFUONAODJGInAKPÖFnASODfBNSDPGJKAODFHJSKLÖÄGNPSDHUIG"  
+        ],
         examples=[
-            "{prefix}download https://www.youtube.com/watch?v=gd-7Ye_vX1k"
+            "{prefix}wait",
+            "{prefix}fIPASDHFUONAODJGInAKPÖFnASODfBNSDPGJKAODFHJSKLÖÄGNPSDHUIG"
         ],
     )
-    @commands.cooldown(1, 15, commands.BucketType.user)
-    @commands.max_concurrency(1, commands.BucketType.user)
-    async def download(
+    async def wait_(
         self, ctx,
-        url: str = commands.param(
-            description="The URL for the video or audio you want to download",
-            converter=URLConverter
-        ),
-        flags: DownloadFlags = None
+        time: int = commands.param(
+            description="The time you want to wait",
+            default=60,
+            displayed_default="60 seconds"
+        )
     ):
-        format = "mp4" if not flags else flags.format
-        compress = False if not flags else flags.compress
+        async with Updater(ctx):
+            await asyncio.sleep(time)
+            
+    @command(
+        commands.group,
+        name="tasks",
+        aliases=["task"],
+        description="Group for command task management.",
+        examples=[
+            "{prefix}task",
+        ],
+        invoke_without_command=True
+    )
+    async def tasks(self, ctx):
+        ctx.command = self.bot.get_command("task list")
+        await ctx.command(ctx)
         
-        await self._process_download(ctx, url, format, compress)
-
+    @command(
+        tasks.command,
+        name="list",
+        description="List all command tasks running under your name.",
+        examples=[
+            "{prefix}task list",
+        ],
+    )
+    async def task_list(self, ctx):
+        command_tasks = [
+            (name, task.get("created"))
+            for name, task in self.bot.command_tasks.items()
+            if task.get("user") == ctx.author.id and
+            name != getattr(ctx, "_task_name", None)
+        ]
+        
+        if not command_tasks:
+            return await ctx.reply("There are no command tasks running under your name.")
+        
+        wrapped_tasks = WrapList(command_tasks, length=6)
+    
+        embeds = []
+        
+        for tasks in wrapped_tasks:
+            embed = discord.Embed(
+                title="Tasks",
+                description="\n".join(
+                    f"`{name}`, started at {discord.utils.format_dt(created, 'F')}"
+                    for name, created in tasks
+                ),
+                color=self.bot.color
+            )
+            
+            embeds.append(embed)
+        
+        await paginate(ctx, embeds)
+        
+    @command(
+        tasks.command,
+        name="cancel",
+        description="Cancel a command task running under your name.",
+        examples=[
+            "{prefix}task cancel wait-51951",
+        ],
+    )
+    async def task_cancel(
+        self, ctx,
+        name: str = commands.param(
+            description="The name of the command task."
+        )
+    ):
+        if name == getattr(ctx, "_task_name", None):
+            return await ctx.send("You can't cancel this task.")
+        
+        name = name.lower()
+        
+        command_task = self.bot.command_tasks.get(name)
+        
+        if not command_task:
+            return await ctx.send("This command task does not exist.")
+        
+        if command_task["user"] != ctx.author.id:
+            return await ctx.send("This command task does not exist.")
+        
+        task: asyncio.Task = command_task["task"]
+        
+        try:
+            task.cancel()
+        except Exception as exc:
+            return await ctx.send(f"Failed to cancel task `{name}`.")
+        
+        await ctx.send(f"Successfully cancelled task `{name}`.")
 
 async def setup(bot):
     await bot.add_cog(Utility(bot))
