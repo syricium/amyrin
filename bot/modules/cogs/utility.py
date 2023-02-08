@@ -82,7 +82,7 @@ class Utility(commands.Cog):
 
             if hasattr(ctx.channel, "is_nsfw"):
                 age_limit = None if ctx.channel.is_nsfw() else 18
-            elif isinstance(ctx.channel, discord.DMChannel)::
+            elif isinstance(ctx.channel, discord.DMChannel):
                 age_limit = 18
 
             try:
