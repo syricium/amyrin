@@ -206,7 +206,7 @@ class Media(commands.Cog):
         ]
         
         if isinstance(file, URLObject):
-            resp = await self.bot.session.get(file.url)
+            resp = await self.bot.session.head(file.url)
             
             if resp.headers.get("Content-Type") not in content_types:
                 parsed_url = urlparse(file.url)
