@@ -86,9 +86,7 @@ class Utility(commands.Cog):
                 age_limit = 18
 
             try:
-                result = await downloader.download(
-                    age_limit=18 if not ctx.channel.is_nsfw() else None
-                )
+                result = await downloader.download(age_limit=age_limit)
             except FailedCompressionException:
                 return await update(
                     "Failed to compress output file, please try running the command again in a server with a higher filesize limit (through server boosts)."
