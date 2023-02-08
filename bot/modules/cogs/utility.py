@@ -80,6 +80,11 @@ class Utility(commands.Cog):
                     f"Invalid format passed, valid formats are {fmt_formats}"
                 )
 
+            if hasattr(ctx.channel, "is_nsfw"):
+                age_limit = None if ctx.channel.is_nsfw() else 18
+            elif isinstance(ctx.channel, discord.DMChannel)::
+                age_limit = 18
+
             try:
                 result = await downloader.download(
                     age_limit=18 if not ctx.channel.is_nsfw() else None
