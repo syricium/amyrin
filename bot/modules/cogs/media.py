@@ -299,7 +299,7 @@ class Media(commands.Cog):
             **Title:** {title}
             **Artist:** {artist}
             **Genres:** {formatted_genres}
-            """
+            """.strip()
         )
 
         embed = discord.Embed(
