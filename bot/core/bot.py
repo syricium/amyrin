@@ -241,6 +241,7 @@ class amyrin(commands.Bot):
         return callback
         
     async def update_command_callbacks(self):
+        return
         for command in self.walk_commands():
             command._callback = self._create_callback(command)
 
