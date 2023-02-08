@@ -215,7 +215,8 @@ class Media(commands.Cog):
                     "tiktok.com",
                     "vm.tiktok.com",
                     "youtu.be",
-                    "youtube.com"
+                    "youtube.com",
+                    "www.youtube.com"
                 )
                 
                 if parsed_url.netloc not in valid_platforms:
