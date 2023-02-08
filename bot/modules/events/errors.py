@@ -27,6 +27,7 @@ class CommandErrorHandler(commands.Cog):
         ignored = (
             commands.CommandNotFound,
             app_commands.CommandInvokeError,
+            commands.CheckFailure,
         )
         error = getattr(error, "original", error)
 
@@ -50,9 +51,6 @@ class CommandErrorHandler(commands.Cog):
         
         elif isinstance(error, commands.BadArgument):
             return await ctx.send(str(error))
-
-        elif isinstance(error, commands.CheckFailure):
-            return
         
         # thanks chatgpt
         elif isinstance(error, (app_commands.CommandOnCooldown, commands.CommandOnCooldown)):
@@ -86,7 +84,6 @@ class CommandErrorHandler(commands.Cog):
         
         # thanks chatgpt
         elif isinstance(error, commands.MaxConcurrencyReached):
-            commands.BucketType.default
             if error.per is commands.BucketType.user or error.per is commands.BucketType.member:
                 msg = (
                     "Alack and alas, good sir or madam! Thy command hath reached the maximum concurrent usage per user. "

@@ -25,6 +25,130 @@ class Utility(commands.Cog):
     def __init__(self, bot):
         super().__init__()
         self.bot: amyrin = bot
+<<<<<<< HEAD
+=======
+        
+    async def _process_download(self, ctx, url: str, format: str, compress: bool):
+        if isinstance(ctx, discord.Interaction):
+            ctx = await self.bot.get_context(ctx.message)
+
+        if ctx.interaction:
+            await ctx.interaction.response.defer()
+
+        ctx.msg = None
+
+        async def update(message: str):
+            if ctx.interaction:
+                if not ctx.interaction.response.is_done():
+                    return await ctx.interaction.follow.send(message)
+                return await ctx.interaction.edit_original_response(content=message)
+            else:
+                if not ctx.msg:
+                    ctx.msg = await ctx.reply(message)
+                else:
+                    await ctx.msg.edit(content=message)
+
+        nginx = self.bot.nginx
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            try:
+                downloader = Downloader(
+                    ctx,
+                    url,
+                    output=tmp_dir,
+                    nginx=nginx,
+                    format=format,
+                    updater=update,
+                    compress=compress
+                )
+            except InvalidFormat as exc:
+                valid_formats = []
+                for format, data in exc.valid_formats.items():
+                    valid_formats.append(format)
+                    for alias in data.get("aliases", []):
+                        valid_formats.append(alias)
+
+                fmt_formats = format_list(
+                    valid_formats, seperator="and", brackets="`"
+                )
+                return await update(
+                    f"Invalid format passed, valid formats are {fmt_formats}"
+                )
+
+            if hasattr(ctx.channel, "is_nsfw"):
+                age_limit = None if ctx.channel.is_nsfw() else 18
+            elif isinstance(ctx.channel, discord.DMChannel):
+                age_limit = 18
+
+            try:
+                result = await downloader.download(age_limit=age_limit)
+            except FailedCompressionException:
+                return await update(
+                    "Failed to compress output file, please try running the command again in a server with a higher filesize limit (through server boosts)."
+                )
+            except ValidityCheckFailed as exc:
+                return await update(str(exc))
+            except NginxHandlerExceededSizeLimit as exc:
+                limit = humanfriendly.format_size(nginx._limit, binary=True)
+                size = humanfriendly.format_size(exc.size, binary=True)
+                exceeded = humanfriendly.format_size(exc.exceeded, binary=True)
+                return await update(f"Download ({size}) exceeds nginx server's filesize limit ({limit}) by {exceeded}.")
+            except MediaException as exc:
+                return await update(str(exc))
+            except AgeLimited:
+                return await update("This video is not able to be downloaded, as it exceeds the maximum age limit.")
+            except json.JSONDecodeError as exc:
+                if random.randint(1,1000) == 591:
+                    reason = "of gas leak!?!??!?"
+                else:
+                    reason = "the URL is not supported by yt-dlp."
+                return await update(f"Failed to parse validity checking result. This might be because {reason}")
+
+            compressed: bool = result.compressed
+            content_type_converted: bool = result.content_type_converted
+            sizes = result.sizes
+
+            content = []
+
+            if compressed:
+                old_size = sizes.get("old")
+                new_size = sizes.get("new")
+
+                fmt_old_size = humanfriendly.format_size(old_size)
+                fmt_new_size = humanfriendly.format_size(new_size)
+
+                compressed_by = 100 * (old_size - new_size) / old_size
+
+                compression_time = result.compression_time
+                fmt_compression_time = humanfriendly.format_timespan(compression_time)
+
+                content.append(
+                    f"✅ Output compression ratio was `{int(compressed_by)}%` and the compression took {fmt_compression_time} (old: `{fmt_old_size}` | new: `{fmt_new_size}`)"
+                )
+
+            if content_type_converted:
+                content.append(
+                    "❗️ Mimetype of output file was different to the desired output, this might be because the file didn't contain the necessary streams for the desired output"
+                )
+
+            if isinstance(result, FileDownload):
+                content = None
+                attachments = [discord.File(result.path)]#
+            elif isinstance(result, URLDownload):
+                content = result.url
+                attachments = []
+
+            if ctx.interaction:
+                await ctx.interaction.edit_original_response(
+                    content=content,
+                    attachments=attachments,
+                )
+            else:
+                await ctx.msg.edit(
+                    content=content,
+                    attachments=attachments,
+                )
+>>>>>>> a8b48abbc67f81169e2ada33eec532af39b17e59
     
     def _format_ud_hyperlink(self, term: str):
         formatted_term = quote_plus(term)

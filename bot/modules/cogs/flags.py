@@ -1,7 +1,7 @@
 from discord.ext import commands
 
 
-class DownloadFlags(commands.FlagConverter, case_insensitive=True, prefix="--"):
+class DownloadFlags(commands.FlagConverter, case_insensitive=True, prefix="--", delimiter=" "):
     format: str = commands.flag(
         name="format", aliases=["fmt"], default="mp4",
         description="The format you want the download to be in."
