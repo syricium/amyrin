@@ -67,9 +67,10 @@ class Renders:
                 draw_emojis=True
             )
             c_height = int(t_height * 1.05) # objectively looks better /j (just adds borders)
-            
-            if c_height < 100:
-                c_height = 100 # also just a subjective design choice
+            min_height = 150
+
+            if c_height < min_height:
+                c_height = min_height # also just a subjective design choice
             
             full_img_size = (width, height + c_height) # combines height of the original image and the caption image height
             caption_size = (width, c_height)
