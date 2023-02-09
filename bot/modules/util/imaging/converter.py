@@ -72,7 +72,10 @@ class ImageConverter(commands.Converter):
                         return result
                 argument = ref.content
         
-        if re.match(URL_REGEX, argument):
+        if argument.isdigit():
+            if user := ctx.bot.get_user(argument):
+                return user
+        elif re.match(URL_REGEX, argument):
             if result := await parse_url(argument, ctx.bot.session):
                 return result
         
