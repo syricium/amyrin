@@ -47,6 +47,7 @@ class Renders:
             size = (500, int(500 * aspect_ratio))
             
             processed = []
+            durations = []
             
             width, height = size
             c_width = width * 0.95 # subjective design choice for borders
@@ -90,6 +91,8 @@ class Renders:
                     )
                     
                 for frame in ImageSequence.Iterator(img):
+                    if duration := frame.info.get("duration"):
+                        durations.append(duration)
                     frame = frame.resize(size)
                     with Image.new("RGBA", full_img_size, "white") as full_img:
                         full_img.paste(caption, (0, 0))
@@ -105,7 +108,7 @@ class Renders:
                     format="gif",
                     save_all=True,
                     append_images=processed[1:],
-                    duration=5,
+                    duration=durations,
                     loop=0
                 )
                 buffer.seek(0)
