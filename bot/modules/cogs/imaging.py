@@ -46,7 +46,8 @@ class Imaging(commands.Cog):
             raise commands.MissingRequiredArgument(inspect.Parameter("text", inspect.Parameter.KEYWORD_ONLY))
         
         try:
-            result = await render(Renders.caption, image, text)
+            async with ctx.typing():
+                result = await render(Renders.caption, image, text)
         except CharacterLimitExceeded as exc:
             return await ctx.send(f"Text ({exc.length} characters) exceeds the maximum character limit of {exc.limit} characters.")
         except TooManyFrames as exc:

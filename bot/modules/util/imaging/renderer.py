@@ -33,7 +33,7 @@ class Renders:
             image = BytesIO(image)
             
         char_limit = 2000
-        frame_limit = 500
+        frame_limit = 150
         text_length = len(text)
         
         if text_length > char_limit and not bypass_charlimit:
