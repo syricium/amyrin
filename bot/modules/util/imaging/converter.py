@@ -82,7 +82,7 @@ class ImageConverter(commands.Converter):
             if result := await parse_url(argument, ctx.bot.session):
                 return result
         
-        if len(argument) == 1 and emoji := is_emoji(argument):
+        if len(argument) == 1 and (emoji := is_emoji(argument)):
             url = "https://emojicdn.elk.sh/" + emoji
             if result := await read_url(url, ctx.bot.session, params={"style": "twitter"}):
                 return result
