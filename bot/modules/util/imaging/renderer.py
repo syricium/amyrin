@@ -91,8 +91,7 @@ class Renders:
                     )
                     
                 for frame in ImageSequence.Iterator(img):
-                    if duration := frame.info.get("duration"):
-                        durations.append(duration)
+                    durations.append(frame.info.get("duration", 5))
                     frame = frame.resize(size)
                     with Image.new("RGBA", full_img_size, "white") as full_img:
                         full_img.paste(caption, (0, 0))
