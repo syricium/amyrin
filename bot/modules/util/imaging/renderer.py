@@ -50,7 +50,7 @@ class Renders:
             
             width, height = size
             c_width = width * 0.95 # subjective design choice for borders
-            t_size = 55
+            t_size = 40
             
             wrapped_text = text_wrap(
                 text,
