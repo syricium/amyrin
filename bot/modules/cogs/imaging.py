@@ -60,7 +60,7 @@ class Imaging(commands.Cog):
             return await ctx.send(f"Captioning task exceeded the maximum time of {timeout} and has therefore been cancelled.")
         
         filename = "image." + ("gif" if result.is_animated else "png")
-        took = humanfriendly.format_timespan(result.took/1000, detailed=True)
+        took = humanfriendly.format_timespan(result.took/1000, detailed=True, max_units=1)
         
         await ctx.send(
             content=f"Processed in `{took}`",
