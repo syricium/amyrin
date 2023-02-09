@@ -74,7 +74,7 @@ class ImageConverter(commands.Converter):
         
         if all(char.isdigit() for char in argument):
             if user := ctx.bot.get_user(int(argument)):
-                return await read_url(user.avatar.url, ctx.bot.session)
+                return BytesIO(await user.avatar.read())
         elif re.match(URL_REGEX, argument):
             if result := await parse_url(argument, ctx.bot.session):
                 return result
