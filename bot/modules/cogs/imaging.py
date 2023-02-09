@@ -27,7 +27,7 @@ class Imaging(commands.Cog):
         url: str = commands.param(
             description="The URL for the image, not required if attachments is relatively available."
         ),
-        text: str = commands.param(
+        *, text: str = commands.param(
             description="The text for the caption.",
             default=None
         )
