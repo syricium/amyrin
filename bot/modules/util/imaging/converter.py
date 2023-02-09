@@ -36,6 +36,9 @@ async def scrape_tenor(session: ClientSession, url: str):
 async def read_url(url: str, session: ClientSession, *args, **kwargs):
     resp = await session.get(url, *args, **kwargs)
     content_type = resp.headers.get("Content-Type")
+    content_length = resp.headers.get("Content-Length", 0)
+    if content_length > 16 * 1024 * 1024: # 16 mb
+        return
     if content_type in CONTENT_TYPES:
         return BytesIO(await resp.read())
 
@@ -81,7 +84,8 @@ class ImageConverter(commands.Converter):
         
         if emoji := is_emoji(argument):
             url = "https://emojicdn.elk.sh/" + emoji
-            return await read_url(url, ctx.bot.session, params={"style": "twitter"})
+            if result := await read_url(url, ctx.bot.session, params={"style": "twitter"}):
+                return result
         
         if fallback:
             return BytesIO(await ctx.author.avatar.read())

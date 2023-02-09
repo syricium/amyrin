@@ -43,6 +43,8 @@ class Renders:
             if img.n_frames > frame_limit:
                 raise TooManyFrames(img.n_frames, frame_limit)
             
+            fps = 1000 / img.info.get("duration", 5)
+            
             aspect_ratio = img.height / img.width
             size = (500, int(500 * aspect_ratio))
             
@@ -103,7 +105,7 @@ class Renders:
                     format="gif",
                     save_all=True,
                     append_images=processed[1:],
-                    duration=5,
+                    duration=fps,
                     loop=0
                 )
                 buffer.seek(0)
