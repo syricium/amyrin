@@ -10,7 +10,7 @@ from imagetext_py import EmojiOptions, FontDB, Paint, TextAlign, WrapStyle, Writ
 
 from PIL import Image, ImageSequence
 
-from modules.util.imaging.exceptions import CharacterLimitExceeded
+from modules.util.imaging.exceptions import CharacterLimitExceeded, TooManyFrames
 from modules.util.timer import Timer
 
 font_path = os.path.join(os.getcwd(), "assets/fonts")
@@ -33,12 +33,16 @@ class Renders:
             image = BytesIO(image)
             
         char_limit = 2000
+        frame_limit = 500
         text_length = len(text)
         
         if text_length > char_limit and not bypass_charlimit:
             raise CharacterLimitExceeded(char_limit, len(text_length))
             
         with Image.open(image) as img:
+            if img.n_frames > frame_limit:
+                raise TooManyFrames(img.n_frames, frame_limit)
+            
             aspect_ratio = img.height / img.width
             size = (500, int(500 * aspect_ratio))
             

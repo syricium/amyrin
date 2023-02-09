@@ -4,3 +4,10 @@ class CharacterLimitExceeded(Exception):
         self.limit = limit
         
         super().__init__(*args)
+        
+class TooManyFrames(Exception):
+    def __init__(self, amount: int, limit: int, *args: object) -> None:
+        self.amount = amount
+        self.limit = limit
+        
+        super().__init__(*args)

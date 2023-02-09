@@ -6,6 +6,7 @@ from discord.ext import commands
 import humanfriendly
 
 from core.bot import amyrin
+from modules.util.imaging.exceptions import CharacterLimitExceeded, TooManyFrames
 
 from . import *
 from modules.util.imaging.converter import ImageConverter
@@ -44,7 +45,12 @@ class Imaging(commands.Cog):
         elif image and not text:
             raise commands.MissingRequiredArgument(inspect.Parameter("text", inspect.Parameter.KEYWORD_ONLY))
         
-        result = await render(Renders.caption, image, text)
+        try:
+            result = await render(Renders.caption, image, text)
+        except CharacterLimitExceeded as exc:
+            return await ctx.send(f"Text ({exc.length} characters) exceeds the maximum character limit of {exc.limit} characters.")
+        except TooManyFrames as exc:
+            return await ctx.send(f"Image ({exc.amount} frames) exceeds the {exc.limit} frame limit.")
         
         filename = "image." + ("gif" if result.is_animated else "png")
         took = f"{round(result.took, 1)} milisecond" + ("s" if int(result.took) != 1 else "")
