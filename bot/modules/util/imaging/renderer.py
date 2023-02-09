@@ -49,7 +49,7 @@ class Renders:
         text_length = len(text)
         
         if text_length > char_limit and not bypass_charlimit:
-            raise CharacterLimitExceeded(char_limit, len(text_length))
+            raise CharacterLimitExceeded(char_limit, text_length)
             
         with Image.open(image) as img:
             if img.n_frames > frame_limit:
