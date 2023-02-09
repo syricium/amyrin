@@ -18,3 +18,5 @@ lxml==4.9.2
 python-magic==0.4.27
 nudenet==2.0.9
 yt-dlp==2023.1.6
+imagetext_py==2.1.1
+Pillow==9.4.0

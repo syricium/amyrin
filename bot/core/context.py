@@ -4,11 +4,15 @@ from io import StringIO
 
 import discord
 from discord.ext import commands
+from modules.util.imaging.converter import ImageConverter
 
 
 class Context(commands.Context):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        
+    async def to_image(self, content: str = None):
+        return await ImageConverter().convert(self, (content or self.message.content))
 
     async def send(self, content: str = None, *args, **kwargs):
         if content is not None:
@@ -57,3 +61,6 @@ class Context(commands.Context):
             *args,
             **kwargs,
         )
+
+async def setup(bot):
+    pass

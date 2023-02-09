@@ -1,0 +1,61 @@
+import inspect
+from io import BytesIO
+import math
+import discord
+from discord.ext import commands
+import humanfriendly
+
+from core.bot import amyrin
+
+from . import *
+from modules.util.imaging.converter import ImageConverter
+from modules.util.imaging.renderer import render, Renders
+
+
+class Imaging(commands.Cog):
+    def __init__(self, bot):
+        super().__init__()
+        self.bot: amyrin = bot
+
+    @command(
+        description="Add an iFunny-like caption to an image or gif",
+        examples=["{prefix}caption  me when the"],
+        aliases=["ifunny"],
+    )
+    async def caption(
+        self, ctx: commands.Context,
+        url: str = commands.param(
+            description="The URL for the image, not required if attachments is relatively available."
+        ),
+        text: str = commands.param(
+            description="The text for the caption.",
+            default=None
+        )
+    ):
+        image = await ImageConverter().convert(ctx, url, fallback=False)
+        
+        if not image:
+            if text:
+                text = url + " " + text
+            else:
+                text = url
+                
+            image = BytesIO(await ctx.author.avatar.with_size(512).read())  
+        elif image and not text:
+            raise commands.MissingRequiredArgument(inspect.Parameter("text", inspect.Parameter.KEYWORD_ONLY))
+        
+        result = await render(Renders.caption, image, text)
+        
+        filename = "image." + ("gif" if result.is_animated else "png")
+        took = f"{round(result.took, 1)} milisecond" + ("s" if int(result.took) != 1 else "")
+        
+        await ctx.send(
+            content=f"Processed in `{took}`",
+            file=discord.File(result.buffer, filename=filename)
+        )        
+
+
+async def setup(
+    bot,
+):
+    await bot.add_cog(Imaging(bot))
