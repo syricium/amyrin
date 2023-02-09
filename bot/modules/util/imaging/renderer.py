@@ -25,6 +25,18 @@ class RenderResult:
     took: int
     is_animated: bool
 
+# stole from https://stackoverflow.com/a/53365469
+def get_avg_fps(img):
+    img.seek(0)
+    frames = duration = 0
+    while True:
+        try:
+            frames += 1
+            duration += img.info['duration']
+            img.seek(img.tell() + 1)
+        except EOFError:
+            return frames / duration * 1000
+
 class Renders:
     def caption(
         image: bytes | BytesIO, text: str, bypass_charlimit: bool = False
@@ -32,7 +44,7 @@ class Renders:
         if isinstance(image, bytes):
             image = BytesIO(image)
             
-        char_limit = 2000
+        char_limit = 1000
         frame_limit = 200
         text_length = len(text)
         
@@ -43,7 +55,7 @@ class Renders:
             if img.n_frames > frame_limit:
                 raise TooManyFrames(img.n_frames, frame_limit)
             
-            fps = 1000 / img.info.get("duration", 5)
+            fps = get_avg_fps(img)
             
             aspect_ratio = img.height / img.width
             size = (500, int(500 * aspect_ratio))

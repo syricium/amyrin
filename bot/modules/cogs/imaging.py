@@ -45,13 +45,19 @@ class Imaging(commands.Cog):
         elif image and not text:
             raise commands.MissingRequiredArgument(inspect.Parameter("text", inspect.Parameter.KEYWORD_ONLY))
         
+        timeout = 30
         try:
             async with ctx.typing():
-                result = await render(Renders.caption, image, text)
+                result = await asyncio.wait_for(
+                    render(Renders.caption, image, text),
+                    timeout=timeout
+                )
         except CharacterLimitExceeded as exc:
             return await ctx.send(f"Text ({exc.length} characters) exceeds the maximum character limit of {exc.limit} characters.")
         except TooManyFrames as exc:
             return await ctx.send(f"Image ({exc.amount} frames) exceeds the {exc.limit} frame limit.")
+        except asyncio.TimeoutError:
+            return await ctx.send(f"Captioning task exceeded the maximum time of {timeout} and has therefore been cancelled.")
         
         filename = "image." + ("gif" if result.is_animated else "png")
         took = f"{round(result.took, 1)} milisecond" + ("s" if int(result.took) != 1 else "")
