@@ -63,7 +63,8 @@ class Renders:
             _, t_height = text_size_multiline(
                 wrapped_text,
                 t_size,
-                font
+                font,
+                draw_emojis=True
             )
             c_height = int(t_height * 1.05) # objectively looks better /j (just adds borders)
             
