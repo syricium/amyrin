@@ -4,6 +4,7 @@ import functools
 import inspect
 from io import BytesIO
 import os
+import math
 from typing import Callable
 
 from imagetext_py import EmojiOptions, FontDB, Paint, TextAlign, WrapStyle, Writer, text_size_multiline, text_wrap
@@ -55,7 +56,7 @@ class Renders:
             
             wrapped_text = text_wrap(
                 text,
-                int(c_width),
+                math.floor(c_width),
                 t_size,
                 font,
                 wrap_style=WrapStyle.Character, # can change to make faster, just wont seperately wrap characters
