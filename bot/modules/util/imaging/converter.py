@@ -5,6 +5,7 @@ from aiohttp import ClientSession
 from bs4 import BeautifulSoup
 from discord.ext import commands
 from modules.util.executor import executor
+from modules.util.converters import SpecificUserConverter
 
 TENOR_REGEX = r"https?:\/\/tenor\.com\/view\/.+"
 URL_REGEX = r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*(),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
@@ -63,32 +64,46 @@ class ImageConverter(commands.Converter):
         argument = argument.strip()
         message = ctx.message
         
+        used = False
+        
         if message.attachments:
             if result := await read_url(message.attachments[0].url, ctx.bot.session):
-                return result
+                return result, used
         
         if message.reference:
             if message.reference.resolved:
                 ref = message.reference.resolved
                 if ref.attachments:
                     if result := await read_url(ref.attachments[0].url, ctx.bot.session):
-                        return result
+                        return result, used
                 argument = ref.content
         
-        if all(char.isdigit() for char in argument):
-            if user := ctx.bot.get_user(int(argument)):
-                return BytesIO(await user.avatar.read())
-        elif re.match(URL_REGEX, argument):
+        try:
+            user = await SpecificUserConverter().convert(ctx, argument)
+        except Exception:
+            pass
+        else:
+            return BytesIO(await user.avatar.read()), True
+        
+        if re.match(URL_REGEX, argument):
             if result := await parse_url(argument, ctx.bot.session):
-                return result
+                return result, True
+        
+        try:
+            emoji = await commands.PartialEmojiConverter().convert(ctx, argument)
+        except Exception:
+            pass
+        else:
+            return BytesIO(await emoji.read()), True
         
         if len(argument) == 1 and (emoji := is_emoji(argument)):
             url = "https://emojicdn.elk.sh/" + emoji
             if result := await read_url(url, ctx.bot.session, params={"style": "twitter"}):
-                return result
+                return result, True
         
         if fallback:
-            return BytesIO(await ctx.author.avatar.read())
+            return BytesIO(await ctx.author.avatar.read()), False
+        return None, False
         
 async def setup(bot):
     pass

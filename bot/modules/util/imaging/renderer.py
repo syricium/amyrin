@@ -18,7 +18,7 @@ font_path = os.path.join(os.getcwd(), "assets/fonts")
 FontDB.SetDefaultEmojiOptions(EmojiOptions(parse_discord_emojis=True))
 FontDB.LoadFromDir(font_path)
 
-font = FontDB.Query("opensans-extrabold japanese") # proxima nova black is the official font used by ifunny
+font = FontDB.Query("arial-unicode-bold arabic")
 
 @dataclass(frozen=True)
 class RenderResult:
@@ -30,10 +30,13 @@ class Renders:
     def caption(
         image: bytes | BytesIO, text: str, bypass_charlimit: bool = False
     ) -> BytesIO:
+        """probably will reimplement in rust once ive learned it"""
+        
         if isinstance(image, bytes):
             image = BytesIO(image)
             
-        char_limit = 1000
+        gif_char_limit = 1000
+        char_limit = 2000
         frame_limit = 200
         text_length = len(text)
         
@@ -41,18 +44,19 @@ class Renders:
             raise CharacterLimitExceeded(text_length, char_limit)
             
         with Image.open(image) as img:
-            if img.n_frames > frame_limit:
-                raise TooManyFrames(img.n_frames, frame_limit)
+            if hasattr(img, "n_frames"):
+                if img.n_frames > frame_limit:
+                    raise TooManyFrames(img.n_frames, frame_limit)
             
             aspect_ratio = img.height / img.width
-            size = (500, int(500 * aspect_ratio))
+            size = (1024, int(1024 * aspect_ratio))
             
             processed = []
             durations = []
             
             width, height = size
             c_width = width * 0.95 # subjective design choice for borders
-            t_size = 40
+            t_size = 75
             
             wrapped_text = text_wrap(
                 text,
@@ -92,9 +96,12 @@ class Renders:
                     )
                     
                 for frame in ImageSequence.Iterator(img):
+                    if text_length > gif_char_limit and not bypass_charlimit:
+                        break
+                    
                     durations.append(frame.info.get("duration", 5))
-                    frame = frame.resize(size)
-                    with Image.new("RGBA", full_img_size, "white") as full_img:
+                    frame = frame.resize(size, Image.ANTIALIAS)
+                    with Image.new("RGBA", full_img_size, (255, 255, 255, 0)) as full_img:
                         full_img.paste(caption, (0, 0))
                         full_img.paste(frame, (0, c_height))
                         
@@ -109,7 +116,9 @@ class Renders:
                     save_all=True,
                     append_images=processed[1:],
                     duration=durations,
-                    loop=0
+                    loop=0,
+                    disposal=2,
+                    comment="im gay"
                 )
                 buffer.seek(0)
                 

@@ -96,7 +96,19 @@ class URLConverter(commands.Converter):
             raise commands.BadArgument("Invalid URL")
         
         return argument
-
+class SpecificUserConverter(commands.Converter):
+    """User Converter class that only supports IDs and mentions"""
+    
+    async def convert(self, ctx: commands.Context, argument: str):
+        if all(char.isdigit() for char in argument) and (user := ctx.bot.get_user(argument)):
+            return user
+        
+        if match := re.match(r"<@!?([0-9]+)>", argument):
+            if user := ctx.bot.get_user(int(match.group(1))):
+                return user
+            
+        raise commands.BadArgument("Failed to convert argument to user")
+    
 class FileConverter(commands.Converter):
     async def convert(
         self, ctx: commands.Context | discord.Interaction, file: str = None

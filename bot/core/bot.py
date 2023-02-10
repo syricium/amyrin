@@ -25,9 +25,10 @@ from playwright.async_api import async_playwright
 from playwright.async_api._generated import Browser
 
 import config
-from core.context import Context
+from modules.context import Context
 from modules.util.documentation.parser import DocParser
 from modules.util.handlers.nginx import NginxHandler
+from expiringdict import ExpiringDict
 
 class amyrin(commands.Bot):
     def __init__(self, *args, **kwargs) -> commands.Bot:
@@ -65,6 +66,9 @@ class amyrin(commands.Bot):
         )
         
         self.command_tasks: Dict[str, dict] = {}
+        self.command_cache: Dict[int, List[discord.Message]] = ExpiringDict(max_len=1000, max_age_seconds=60)
+        
+        self.context = Context
         
         self.module_relatives: Dict[str, List[str]] = {}
 
@@ -312,8 +316,8 @@ class amyrin(commands.Bot):
 
         await super().close()
 
-    async def get_context(self, message, *, cls=Context) -> Context:
-        return await super().get_context(message, cls=cls)
+    async def get_context(self, message, *, cls=None) -> Context:
+        return await super().get_context(message, cls=cls or self.context)
 
     def setup_discord_logger(self) -> None:
         logger = logging.getLogger("discord")

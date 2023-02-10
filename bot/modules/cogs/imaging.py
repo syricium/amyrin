@@ -26,23 +26,24 @@ class Imaging(commands.Cog):
     async def caption(
         self, ctx: commands.Context,
         url: str = commands.param(
-            description="The URL for the image, not required if attachments is relatively available."
+            description="The URL for the image, not required if an attachment is relatively available."
         ),
         *, text: str = commands.param(
             description="The text for the caption.",
             default=None
         )
     ):
-        image = await ImageConverter().convert(ctx, url, fallback=False)
+        image, used = await ImageConverter().convert(ctx, url, fallback=False) # used variable indicates if the image derives from the argument parameter
         
-        if not image:
+        if image is None or not used:
             if text:
                 text = url + " " + text
             else:
                 text = url
                 
-            image = BytesIO(await ctx.author.avatar.with_size(512).read())  
-        elif image and not text:
+            if image is None:
+                image = BytesIO(await ctx.author.avatar.with_size(512).read())
+        elif image is not None and not text:
             raise commands.MissingRequiredArgument(inspect.Parameter("text", inspect.Parameter.KEYWORD_ONLY))
         
         timeout = 30
