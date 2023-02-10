@@ -37,7 +37,7 @@ async def read_url(url: str, session: ClientSession, *args, **kwargs):
     resp = await session.get(url, *args, **kwargs)
     content_type = resp.headers.get("Content-Type")
     data = await resp.read()
-    if int(data) > 16 * 1024 * 1024: # 16 mb
+    if len(data) > 16 * 1024 * 1024: # 16 mb
         return
     if content_type in CONTENT_TYPES:
         return BytesIO(data)
