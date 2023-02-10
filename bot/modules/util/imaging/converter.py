@@ -36,11 +36,11 @@ async def scrape_tenor(session: ClientSession, url: str):
 async def read_url(url: str, session: ClientSession, *args, **kwargs):
     resp = await session.get(url, *args, **kwargs)
     content_type = resp.headers.get("Content-Type")
-    content_length = resp.headers.get("Content-Length", 0)
-    if int(content_length) > 16 * 1024 * 1024: # 16 mb
+    data = await resp.read()
+    if int(data) > 16 * 1024 * 1024: # 16 mb
         return
     if content_type in CONTENT_TYPES:
-        return BytesIO(await resp.read())
+        return BytesIO(data)
 
 async def parse_url(url: str, session: ClientSession):
     if (
