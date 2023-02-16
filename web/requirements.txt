@@ -5,3 +5,4 @@ uvicorn==0.20.0
 discord.py==2.1.0
 Jinja2==3.1.2
 coloredlogs==15.0.1
+starlette>=0.25.0 # not directly required, pinned by Snyk to avoid a vulnerability
