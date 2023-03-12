@@ -1,0 +1,12 @@
+[Unit]
+Description=amyrin
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/syrice/amyrin
+ExecStart=bash -c '/home/syrice/.local/bin/poetry run python start.py'
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
